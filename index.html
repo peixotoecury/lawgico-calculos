@@ -511,6 +511,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
       <div class="actions-bar no-print">
         <button class="btn btn-green"   onclick="lmSalvar()">💾 Salvar Laudo</button>
         <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+        <button class="btn btn-excel"   onclick="exportXLSXLaudoMed()">📊 Excel</button>
         <button class="btn btn-navy"    onclick="lmNovo()">📄 Novo</button>
         <button class="btn btn-outline" onclick="lmToggleSalvos()">📂 Laudos Salvos</button>
       </div>
@@ -629,6 +630,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
       <div class="actions-bar no-print">
         <button class="btn btn-green"   onclick="ltSalvar()">💾 Salvar Laudo</button>
         <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+        <button class="btn btn-excel"   onclick="exportXLSXLaudoTec()">📊 Excel</button>
         <button class="btn btn-navy"    onclick="ltNovo()">📄 Novo</button>
         <button class="btn btn-outline" onclick="ltToggleSalvos()">📂 Laudos Salvos</button>
       </div>
@@ -758,6 +760,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
       <div class="actions-bar no-print">
         <button class="btn btn-green"   onclick="leSalvar()">💾 Salvar Laudo</button>
         <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+        <button class="btn btn-excel"   onclick="exportXLSXLaudoErg()">📊 Excel</button>
         <button class="btn btn-navy"    onclick="leNovo()">📄 Novo</button>
         <button class="btn btn-outline" onclick="leToggleSalvos()">📂 Laudos Salvos</button>
       </div>
@@ -3693,6 +3696,205 @@ function exportXLSXDisc(){
   if(recl) fname+='_'+recl.split(' ')[0];
   if(dataAcordo) fname+='_'+dataAcordo.replace(/-/g,'');
   fname+='.xlsx';
+  XLSX.writeFile(wb,fname);
+}
+
+// ================================================================
+// EXPORTAÇÃO EXCEL — LAUDOS PERICIAIS
+// ================================================================
+
+function exportXLSXLaudoMed(){
+  if(typeof XLSX==='undefined'){alert('Biblioteca Excel ainda carregando. Tente novamente.');return;}
+  function fd(d){return d?d.split('-').reverse().join('/'):'';} function fn(n){return Math.round((n||0)*100)/100;}
+  function gv(id){var el=document.getElementById(id);return el?(el.value||''):'';}
+  function gn(id){return parseFloat(gv(id))||0;}
+
+  var proc=gv('lm-proc'),recl=gv('lm-recl'),reclada=gv('lm-reclada'),perito=gv('lm-perito'),dataLaudo=gv('lm-data');
+  var nome=gv('lm-nome'),nasc=gv('lm-nasc'),idade=gn('lm-idade'),prof=gv('lm-prof');
+  var salario=gn('lm-sal'),admissao=gv('lm-admissao'),afast=gv('lm-afast');
+  var cid=gv('lm-cid'),diag=gv('lm-diag');
+  var nexo=gv('lm-nexo'),concausa=gn('lm-concausa');
+  var tipo=gv('lm-incap'),pct=gn('lm-pct')||100,expVida=gn('lm-expvida')||76;
+  var moral=gn('lm-moral'),estetico=gn('lm-estetico'),tratamento=gn('lm-tratamento'),outros=gn('lm-outros');
+  var pensaoIni=gv('lm-pensao-ini'),obs=gv('lm-obs');
+
+  var nexoLbl={'sim':'Sim — nexo direto','parcial':'Parcial — concausa','nao':'Não'};
+  var incapLbl={'nenhuma':'Nenhuma','parcial-temp':'Parcial Temporária','parcial-perm':'Parcial Permanente','total-temp':'Total Temporária','total-perm':'Total Permanente'};
+
+  var fNexo=(nexo==='parcial')?(concausa/100):(nexo==='sim'?1:0);
+  var perm=tipo==='parcial-perm'||tipo==='total-perm';
+  var pensaoMensal=(tipo!=='nenhuma'&&salario>0)?salario*(pct/100)*fNexo:0;
+  var pensaoRetro=(pensaoMensal&&pensaoIni)?calcRetroativo(pensaoMensal,pensaoIni,today()):0;
+  var anosRest=perm?Math.max(0,expVida-idade):0;
+  var pensaoCap=perm?pensaoMensal*12*anosRest:0;
+  var totPensao=pensaoRetro+pensaoCap;
+  var totGeral=moral+estetico+tratamento+outros+totPensao;
+
+  var rows=[];
+  rows.push(['LAWgico — Laudo Pericial Médico']);rows.push(['']);
+  rows.push(['Processo:',proc,'','Data do Laudo:',fd(dataLaudo)]);
+  rows.push(['Reclamante:',recl,'','Gerado em:',fd(today())]);
+  rows.push(['Reclamada:',reclada]);rows.push(['Perito Nomeado:',perito]);rows.push(['']);
+  rows.push(['DADOS DO PACIENTE']);
+  rows.push(['Nome:',nome]);rows.push(['Nascimento:',fd(nasc),'','Idade:',idade+' anos']);
+  rows.push(['Profissão:',prof]);rows.push(['Salário Mensal (R$):','',fn(salario)]);
+  rows.push(['Admissão:',fd(admissao),'','Afastamento:',fd(afast)]);rows.push(['']);
+  rows.push(['DIAGNÓSTICO PERICIAL']);
+  rows.push(['CID-10:',cid]);rows.push(['Diagnóstico:',diag]);
+  rows.push(['Nexo Causal:',nexoLbl[nexo]||nexo]);
+  if(nexo==='parcial') rows.push(['% Contribuição do Trabalho:',concausa+'%']);
+  rows.push(['Incapacidade:',incapLbl[tipo]||tipo]);
+  if(tipo!=='nenhuma'&&tipo!=='total-temp'&&tipo!=='total-perm') rows.push(['% Redução Laboral:',pct+'%']);
+  if(perm) rows.push(['Expectativa de Vida (IBGE):',expVida+' anos']);
+  rows.push(['']);
+  if(tipo!=='nenhuma'&&salario>0){
+    rows.push(['PENSÃO / DANOS CONTINUADOS','','Valor (R$)']);
+    rows.push(['Pensão Mensal:','',fn(pensaoMensal)]);
+    if(pensaoIni){
+      var nMs=monthRange(toYM(pensaoIni),toYM(today())).length;
+      rows.push(['Período Retroativo:',fd(pensaoIni)+' → hoje ('+nMs+' meses)',fn(pensaoRetro)]);
+    }
+    if(perm) rows.push(['Pensão Capitalizada ('+anosRest.toFixed(1)+' anos):','',fn(pensaoCap)]);
+    rows.push(['Total Pensão:','',fn(totPensao)]);rows.push(['']);
+  }
+  rows.push(['QUANTUM DEBEATUR','','Valor (R$)']);
+  rows.push(['Dano Moral','',fn(moral)]);rows.push(['Dano Estético','',fn(estetico)]);
+  rows.push(['Tratamento / Material','',fn(tratamento)]);rows.push(['Outros Danos','',fn(outros)]);
+  if(tipo!=='nenhuma') rows.push(['Pensão (retro + capitalizada)','',fn(totPensao)]);
+  rows.push(['TOTAL GERAL','',fn(totGeral)]);
+  if(obs.trim()){rows.push(['']);rows.push(['Observações:']);rows.push([obs]);}
+
+  var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:38},{wch:30},{wch:10},{wch:20},{wch:18}];
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Laudo Médico');
+  var fname='LAWgico_LaudoMedico'+(recl?'_'+recl.split(' ')[0]:'')+(dataLaudo?'_'+dataLaudo.replace(/-/g,''):'')+'.xlsx';
+  XLSX.writeFile(wb,fname);
+}
+
+function exportXLSXLaudoTec(){
+  if(typeof XLSX==='undefined'){alert('Biblioteca Excel ainda carregando. Tente novamente.');return;}
+  function fd(d){return d?d.split('-').reverse().join('/'):'';} function fn(n){return Math.round((n||0)*100)/100;}
+  function gv(id){var el=document.getElementById(id);return el?(el.value||''):'';}
+  function gn(id){return parseFloat(gv(id))||0;}
+
+  var proc=gv('lt-proc'),recl=gv('lt-recl'),reclada=gv('lt-reclada'),perito=gv('lt-perito'),dataLaudo=gv('lt-data');
+  var local=gv('lt-local'),func=gv('lt-func'),obs=gv('lt-obs');
+  var insAtivo=gv('lt-ins-sim')==='sim',perAtivo=gv('lt-per-sim')==='sim';
+
+  var totIns=0,insGrau=0,insMensal=0,insMeses=0,insAgente='',insIni='',insFim='',insBase='',insBaseVal=0;
+  if(insAtivo){
+    insGrau=parseFloat(gv('lt-ins-grau'))||20;insBase=gv('lt-ins-base');
+    insBaseVal=(insBase==='sm')?SM_ATUAL:gn('lt-ins-sal');
+    insAgente=gv('lt-ins-agente');insIni=gv('lt-ins-ini');insFim=gv('lt-ins-fim');
+    insMensal=insBaseVal*insGrau/100;
+    insMeses=(insIni&&insFim)?monthRange(toYM(insIni),toYM(insFim)).length:0;
+    if(insMensal&&insIni) totIns=calcRetroativo(insMensal,insIni,insFim);
+  }
+  var totPer=0,perSal=0,perPct=30,perMensal=0,perMeses=0,perAtiv='',perIni='',perFim='';
+  if(perAtivo){
+    perAtiv=gv('lt-per-ativ');perSal=gn('lt-per-sal');perPct=parseFloat(gv('lt-per-pct'))||30;
+    perIni=gv('lt-per-ini');perFim=gv('lt-per-fim');perMensal=perSal*perPct/100;
+    perMeses=(perIni&&perFim)?monthRange(toYM(perIni),toYM(perFim)).length:0;
+    if(perMensal&&perIni) totPer=calcRetroativo(perMensal,perIni,perFim);
+  }
+  var totGeral=totIns+totPer;
+
+  var rows=[];
+  rows.push(['LAWgico — Laudo Pericial Técnico (Insalubridade / Periculosidade)']);rows.push(['']);
+  rows.push(['Processo:',proc,'','Data do Laudo:',fd(dataLaudo)]);
+  rows.push(['Reclamante:',recl,'','Gerado em:',fd(today())]);
+  rows.push(['Reclamada:',reclada]);rows.push(['Perito:',perito]);
+  rows.push(['Local Inspecionado:',local]);rows.push(['Função / Cargo:',func]);rows.push(['']);
+
+  if(insAtivo){
+    rows.push(['INSALUBRIDADE (CLT art. 192 / NR-15)']);
+    rows.push(['Agente Nocivo:',insAgente]);
+    rows.push(['Grau:',insGrau+'% ('+(insGrau===10?'Mínimo':insGrau===20?'Médio':'Máximo')+')']);
+    rows.push(['Base:',(insBase==='sm'?'Salário Mínimo (R$ 1.518,00)':'Salário Contratual'),'',fn(insBaseVal)]);
+    rows.push(['Mensal (R$):','',fn(insMensal)]);
+    rows.push(['Período:',fd(insIni)+' a '+fd(insFim),'',insMeses+' meses']);
+    rows.push(['Retroativo (IPCA-E → SELIC):','',fn(totIns)]);rows.push(['']);
+  }
+  if(perAtivo){
+    rows.push(['PERICULOSIDADE (CLT art. 193)']);
+    rows.push(['Atividade / Risco:',perAtiv]);
+    rows.push(['Salário Base (R$):','',fn(perSal)]);rows.push(['Percentual:',perPct+'%']);
+    rows.push(['Mensal (R$):','',fn(perMensal)]);
+    rows.push(['Período:',fd(perIni)+' a '+fd(perFim),'',perMeses+' meses']);
+    rows.push(['Retroativo (IPCA-E → SELIC):','',fn(totPer)]);rows.push(['']);
+  }
+  rows.push(['RESUMO','','Valor (R$)']);
+  if(insAtivo) rows.push(['Retroativo Insalubridade','',fn(totIns)]);
+  if(perAtivo) rows.push(['Retroativo Periculosidade','',fn(totPer)]);
+  rows.push(['TOTAL GERAL','',fn(totGeral)]);
+  if(obs.trim()){rows.push(['']);rows.push(['Observações / NRs Violadas:']);rows.push([obs]);}
+
+  var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:40},{wch:28},{wch:10},{wch:20}];
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Laudo Técnico');
+  var fname='LAWgico_LaudoTecnico'+(recl?'_'+recl.split(' ')[0]:'')+(dataLaudo?'_'+dataLaudo.replace(/-/g,''):'')+'.xlsx';
+  XLSX.writeFile(wb,fname);
+}
+
+function exportXLSXLaudoErg(){
+  if(typeof XLSX==='undefined'){alert('Biblioteca Excel ainda carregando. Tente novamente.');return;}
+  function fd(d){return d?d.split('-').reverse().join('/'):'';} function fn(n){return Math.round((n||0)*100)/100;}
+  function gv(id){var el=document.getElementById(id);return el?(el.value||''):'';}
+  function gn(id){return parseFloat(gv(id))||0;}
+
+  var proc=gv('le-proc'),recl=gv('le-recl'),reclada=gv('le-reclada'),perito=gv('le-perito'),dataLaudo=gv('le-data');
+  var posto=gv('le-posto'),cid=gv('le-cid'),diag=gv('le-diag'),nexo=gv('le-nexo'),nr17=gv('le-nr17');
+  var moral=gn('le-moral'),outros=gn('le-outros'),obs=gv('le-obs');
+
+  var nexoLbl={'sim':'Sim — nexo direto','parcial':'Parcial — concausa','nao':'Não'};
+  var nr17Lbl={'nao':'Não conforme','parcial':'Parcialmente conforme','sim':'Conforme'};
+  var FATORES=['Postura inadequada / forçada','Movimentos repetitivos','Esforço físico excessivo',
+    'Vibração (corpo inteiro ou segmentar)','Temperatura extrema','Iluminação inadequada',
+    'Ruído acima do limite (NR-15)','Sobrecarga mental / estresse',
+    'Mobiliário / equipamentos inadequados','Trabalho noturno / turnos exaustivos'];
+  var fativos=[];
+  for(var i=1;i<=10;i++){var cb=document.getElementById('le-f'+i);if(cb&&cb.checked)fativos.push(FATORES[i-1]);}
+
+  var insAtivo=gv('le-ins-sim')==='sim';
+  var totIns=0,insGrau=0,insMensal=0,insMeses=0,insIni='',insFim='',insBase='',insBaseVal=0;
+  if(insAtivo){
+    insGrau=parseFloat(gv('le-ins-grau'))||20;insBase=gv('le-ins-base');
+    insBaseVal=(insBase==='sm')?SM_ATUAL:gn('le-ins-sal');
+    insIni=gv('le-ins-ini');insFim=gv('le-ins-fim');insMensal=insBaseVal*insGrau/100;
+    insMeses=(insIni&&insFim)?monthRange(toYM(insIni),toYM(insFim)).length:0;
+    if(insMensal&&insIni) totIns=calcRetroativo(insMensal,insIni,insFim);
+  }
+  var totGeral=totIns+moral+outros;
+
+  var rows=[];
+  rows.push(['LAWgico — Laudo Pericial Ergonômico']);rows.push(['']);
+  rows.push(['Processo:',proc,'','Data do Laudo:',fd(dataLaudo)]);
+  rows.push(['Reclamante:',recl,'','Gerado em:',fd(today())]);
+  rows.push(['Reclamada:',reclada]);rows.push(['Perito:',perito]);
+  rows.push(['Posto / Função:',posto]);rows.push(['']);
+  rows.push(['FATORES DE RISCO ERGONÔMICO IDENTIFICADOS']);
+  if(fativos.length>0){fativos.forEach(function(f){rows.push(['✔ '+f]);});}
+  else rows.push(['Nenhum fator selecionado']);
+  rows.push(['']);
+  rows.push(['NR-17:',nr17Lbl[nr17]||nr17]);
+  rows.push(['CID-10:',cid]);rows.push(['Diagnóstico:',diag]);
+  rows.push(['Nexo Causal:',nexoLbl[nexo]||nexo]);rows.push(['']);
+  if(insAtivo){
+    rows.push(['ADICIONAL DE INSALUBRIDADE']);
+    rows.push(['Grau:',insGrau+'% ('+(insGrau===10?'Mínimo':insGrau===20?'Médio':'Máximo')+')']);
+    rows.push(['Base:',(insBase==='sm'?'Salário Mínimo':'Salário Contratual'),'',fn(insBaseVal)]);
+    rows.push(['Mensal (R$):','',fn(insMensal)]);
+    rows.push(['Período:',fd(insIni)+' a '+fd(insFim),'',insMeses+' meses']);
+    rows.push(['Retroativo (IPCA-E → SELIC):','',fn(totIns)]);rows.push(['']);
+  }
+  rows.push(['QUANTUM DEBEATUR','','Valor (R$)']);
+  if(insAtivo) rows.push(['Insalubridade Retroativa','',fn(totIns)]);
+  rows.push(['Dano Moral / Existencial','',fn(moral)]);
+  rows.push(['Outros (indenizações)','',fn(outros)]);
+  rows.push(['TOTAL GERAL','',fn(totGeral)]);
+  if(obs.trim()){rows.push(['']);rows.push(['Conclusões / Observações:']);rows.push([obs]);}
+
+  var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:40},{wch:28},{wch:10},{wch:20}];
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Laudo Ergonômico');
+  var fname='LAWgico_LaudoErgonomico'+(recl?'_'+recl.split(' ')[0]:'')+(dataLaudo?'_'+dataLaudo.replace(/-/g,''):'')+'.xlsx';
   XLSX.writeFile(wb,fname);
 }
 
