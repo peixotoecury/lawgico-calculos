@@ -1068,6 +1068,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
     <div class="actions-bar no-print">
       <button class="btn btn-green"   onclick="liqSalvar()">💾 Salvar Liquidação</button>
       <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+      <button class="btn btn-excel"   onclick="exportXLSXLiq()">📊 Excel</button>
       <button class="btn btn-navy"    onclick="liqNovo()">📄 Nova Liquidação</button>
       <button class="btn btn-outline" onclick="liqToggleSalvos()">📂 Liquidações Salvas</button>
     </div>
@@ -3278,6 +3279,168 @@ function exportXLSXInicial(){
   fn2 += '.xlsx';
 
   XLSX.writeFile(wb, fn2);
+}
+
+// ================================================================
+// EXPORTAÇÃO EXCEL — LIQUIDAÇÃO DE SENTENÇA
+// ================================================================
+
+function exportXLSXLiq(){
+  if(typeof XLSX==='undefined'){alert('Biblioteca Excel ainda carregando. Tente novamente.');return;}
+  if(!LIQ_VERBAS.length){alert('Nenhuma verba para exportar.');return;}
+
+  var proc     = document.getElementById('liq-proc').value     || '';
+  var recl     = document.getElementById('liq-recl').value     || '';
+  var reclada  = document.getElementById('liq-reclada').value  || '';
+  var juizo    = document.getElementById('liq-juizo').value    || '';
+  var tipo     = document.getElementById('liq-tipo').value     || '';
+  var datasent = document.getElementById('liq-datasent').value || '';
+  var datab    = document.getElementById('liq-datab').value    || '';
+  var obs      = document.getElementById('liq-obs').value      || '';
+
+  function fd(d){ return d ? d.split('-').reverse().join('/') : ''; }
+  function fn(n){ return Math.round((n||0)*100)/100; }
+
+  // ── Recalcula (espelha liqRecalc) ─────────────────────────────────
+  var totSal=0, totInd=0;
+  var verbaDados = LIQ_VERBAS.map(function(v, i){
+    var vo  = parseFloat(String(v.valor||'').replace(',','.'))||0;
+    var res = calcVerba(v);
+    var nome= (v.nome==='✏️ Outra (digitar abaixo)') ? (v.nomeCustom||'Outra') : (v.nome||'—');
+    var nat = v.natureza==='ind' ? 'Indenizatória' : 'Salarial';
+    if(res.ok){ if(v.natureza==='ind') totInd+=res.total; else totSal+=res.total; }
+    return {num:i+1, nome:nome, nat:nat, vo:vo, res:res, v:v};
+  });
+  var totBruto=totSal+totInd;
+
+  // INSS
+  var inssAtivo=document.getElementById('liq-inss-ativo').checked;
+  var nMInss=parseInt(document.getElementById('liq-inss-meses').value)||0;
+  var inssTotal=0, inssMensal=0, inssBreak=[];
+  if(inssAtivo&&totSal>0&&nMInss>0){
+    var ic=calcINSSProgressivo(totSal/nMInss);
+    inssMensal=ic.total; inssTotal=ic.total*nMInss; inssBreak=ic.breakdown;
+  }
+
+  // IRRF
+  var irrfAtivo=document.getElementById('liq-irrf-ativo').checked;
+  var nMIrrf=parseInt(document.getElementById('liq-irrf-meses').value)||0;
+  var dedM=parseFloat(document.getElementById('liq-irrf-ded').value)||0;
+  var irrfTotal=0, rendaFicta=0, baseTrib=0, irrfAliq='', irrfMensal=0;
+  if(irrfAtivo&&totSal>0&&nMIrrf>0){
+    baseTrib=Math.max(0,totSal-inssTotal-(dedM*nMIrrf));
+    rendaFicta=baseTrib/nMIrrf;
+    var irrf=calcIRRFMensal(rendaFicta);
+    irrfMensal=irrf.val; irrfTotal=irrf.val*nMIrrf; irrfAliq=irrf.txt;
+  }
+
+  // Subtotal e honorários
+  var subtotal=totBruto-(inssAtivo?inssTotal:0)-(irrfAtivo?irrfTotal:0);
+  var honAtivo=document.getElementById('liq-hon-ativo').checked;
+  var pctHon=parseFloat(document.getElementById('liq-hon-pct').value)||0;
+  var honTotal=0;
+  if(honAtivo){
+    var baseHonSel=document.getElementById('liq-hon-base').value;
+    var baseHonVal=baseHonSel==='bruto'?totBruto:baseHonSel==='sal'?totSal:baseHonSel==='ind'?totInd:subtotal;
+    honTotal=baseHonVal*(pctHon/100);
+  }
+  var valLiq=subtotal-(honAtivo?honTotal:0);
+
+  // Encargos reclamada (informativo)
+  var encInssPat=totSal*0.20;
+  var encFGTS   =totSal*0.08;
+  var encMulta  =totSal*0.08*0.40;
+  var encTotal  =totSal*(0.20+0.08+0.032);
+
+  // ── Monta planilha ────────────────────────────────────────────────
+  var rows=[];
+
+  // Cabeçalho
+  rows.push(['LAWgico Cálculos — Liquidação de Sentença']);
+  rows.push(['']);
+  rows.push(['Processo:',   proc,       '', 'Data da '+tipo+':',  fd(datasent)]);
+  rows.push(['Reclamante:', recl,       '', 'Data-Base:',         fd(datab)]);
+  rows.push(['Reclamada:',  reclada,    '', 'Gerado em:',         fd(today())]);
+  rows.push(['Juízo/Vara:', juizo,      '', '', '']);
+  rows.push(['']);
+
+  // Tabela de verbas
+  rows.push(['VERBAS / PEDIDOS CONDENATÓRIOS']);
+  rows.push([
+    '#','Verba / Pedido','Natureza','Valor Original (R$)',
+    'Data Início','Data-Base','Índice','Juros 1%/mês',
+    'Meses','Fator','Valor Corrigido (R$)','Valor Juros (R$)','Total Atualizado (R$)'
+  ]);
+  verbaDados.forEach(function(d){
+    var r=d.res, v=d.v;
+    rows.push([
+      d.num, d.nome, d.nat, fn(d.vo),
+      fd(v.ini), fd(v.fim||today()),
+      v.indice||'IPCA-E+SELIC',
+      (r.ok&&v.indice!=='SELIC'&&v.juros)?'Sim':'Não',
+      r.ok?r.meses:'',
+      r.ok?fn(r.fator):'',
+      r.ok?fn(r.corr):'',
+      r.ok?fn(r.juros):'',
+      r.ok?fn(r.total):''
+    ]);
+  });
+  rows.push(['']);
+  rows.push(['','Total Salarial (corrigido)','','','','','','','','',fn(totSal),'',fn(totSal)]);
+  rows.push(['','Total Indenizatório (corrigido)','','','','','','','','',fn(totInd),'',fn(totInd)]);
+  rows.push(['','TOTAL BRUTO DO CRÉDITO','','','','','','','','','','',fn(totBruto)]);
+  rows.push(['']);
+
+  // Deduções do reclamante
+  rows.push(['DEDUÇÕES DO RECLAMANTE','','Valor (R$)']);
+  rows.push(['Total Bruto do Crédito','',fn(totBruto)]);
+  if(inssAtivo&&inssTotal>0){
+    rows.push(['(-) INSS Empregado — progressivo 2025','',fn(-inssTotal)]);
+    rows.push(['    Base mensal: '+rr(inssMensal)+'/mês × '+nMInss+' meses','','']);
+    // INSS por faixa
+    inssBreak.forEach(function(b){
+      rows.push(['    Faixa até '+rr(b.ate)+' — '+(b.aliq*100).toFixed(1)+'%: '+rr(b.trib)+' trib. → '+rr(b.val),'','']);
+    });
+  }
+  if(irrfAtivo&&irrfTotal>0){
+    rows.push(['(-) IRRF Art. 12-A — '+irrfAliq,'',fn(-irrfTotal)]);
+    rows.push(['    Base tributável: '+rr(baseTrib)+' | Renda fictícia: '+rr(rendaFicta)+'/mês','','']);
+    rows.push(['    '+rr(irrfMensal)+'/mês × '+nMIrrf+' meses','','']);
+  }
+  rows.push(['= Subtotal (bruto − INSS − IRRF)','',fn(subtotal)]);
+  if(honAtivo&&honTotal>0){
+    rows.push(['(-) Honorários Advocatícios '+pctHon+'%','',fn(-honTotal)]);
+  }
+  rows.push(['= VALOR LÍQUIDO DO RECLAMANTE','',fn(valLiq)]);
+  rows.push(['']);
+
+  // Encargos reclamada
+  rows.push(['ENCARGOS DA RECLAMADA (informativo)','','Valor (R$)']);
+  rows.push(['INSS Patronal 20% (sobre salarial)','',fn(encInssPat)]);
+  rows.push(['FGTS 8% (sobre salarial)','',fn(encFGTS)]);
+  rows.push(['Multa FGTS 40% (sobre FGTS)','',fn(encMulta)]);
+  rows.push(['Total Encargos (estimado)','',fn(encTotal)]);
+
+  if(obs.trim()){
+    rows.push(['']);
+    rows.push(['Observações:']);
+    rows.push([obs]);
+  }
+
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[
+    {wch:4},{wch:36},{wch:16},{wch:20},
+    {wch:13},{wch:13},{wch:18},{wch:12},
+    {wch:7},{wch:14},{wch:20},{wch:18},{wch:22}
+  ];
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Liquidação de Sentença');
+
+  var fname='LAWgico_Liquidacao';
+  if(recl)   fname+='_'+recl.split(' ')[0];
+  if(datab)  fname+='_'+datab.replace(/-/g,'');
+  fname+='.xlsx';
+  XLSX.writeFile(wb,fname);
 }
 
 // ================================================================
