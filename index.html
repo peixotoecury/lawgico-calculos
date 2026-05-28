@@ -1532,6 +1532,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
     <div class="actions-bar no-print">
       <button class="btn btn-green"   onclick="discSalvar()">💾 Salvar Discriminação</button>
       <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+      <button class="btn btn-excel"   onclick="exportXLSXDisc()">📊 Excel</button>
       <button class="btn btn-navy"    onclick="discNovo()">📄 Nova Discriminação</button>
       <button class="btn btn-outline" onclick="discToggleSalvos()">📂 Salvos</button>
     </div>
@@ -3276,6 +3277,147 @@ function exportXLSXInicial(){
   fn2 += '.xlsx';
 
   XLSX.writeFile(wb, fn2);
+}
+
+// ================================================================
+// EXPORTAÇÃO EXCEL — DISCRIMINAÇÃO DE VERBAS
+// ================================================================
+
+function exportXLSXDisc(){
+  if(typeof XLSX==='undefined'){alert('Biblioteca Excel ainda carregando. Tente novamente.');return;}
+  if(!DISC_VERBAS.length){alert('Nenhuma verba para exportar.');return;}
+
+  var proc       = document.getElementById('disc-proc').value        || '';
+  var recl       = document.getElementById('disc-recl').value        || '';
+  var reclada    = document.getElementById('disc-reclada').value     || '';
+  var juizo      = document.getElementById('disc-juizo').value       || '';
+  var dataAcordo = document.getElementById('disc-data-acordo').value || '';
+  var nMesesVin  = document.getElementById('disc-nMeses-vinculo').value || '';
+  var obs        = document.getElementById('disc-obs').value         || '';
+
+  function fd(d){ return d ? d.split('-').reverse().join('/') : ''; }
+  function fn(n){ return Math.round((n||0)*100)/100; }
+
+  // ── Recalcula (espelha discRecalc) ────────────────────────────────
+  var totSal=0, totInd=0;
+  DISC_VERBAS.forEach(function(v){
+    var val=parseFloat(String(v.valor||'').replace(',','.'))||0;
+    if(v.natureza==='ind') totInd+=val; else totSal+=val;
+  });
+  var totBruto=totSal+totInd;
+
+  // INSS empregado
+  var inssAtivo=document.getElementById('disc-inss-ativo').checked;
+  var nMInss=parseInt(document.getElementById('disc-inss-meses').value)||0;
+  var inssTotal=0, inssMensal=0;
+  if(inssAtivo&&totSal>0&&nMInss>0){
+    var ic=calcINSSProgressivo(totSal/nMInss);
+    inssMensal=ic.total; inssTotal=ic.total*nMInss;
+  }
+
+  // IRRF Art. 12-A
+  var irrfAtivo=document.getElementById('disc-irrf-ativo').checked;
+  var nMIrrf=parseInt(document.getElementById('disc-irrf-meses').value)||0;
+  var dedM=parseFloat(document.getElementById('disc-irrf-ded').value)||0;
+  var irrfTotal=0, rendaFicta=0, baseTrib=0, irrfAliq='';
+  if(irrfAtivo&&totSal>0&&nMIrrf>0){
+    baseTrib=Math.max(0,totSal-inssTotal-(dedM*nMIrrf));
+    rendaFicta=baseTrib/nMIrrf;
+    var ir=calcIRRFMensal(rendaFicta);
+    irrfTotal=ir.val*nMIrrf; irrfAliq=ir.txt;
+  }
+
+  // Honorários trabalhador
+  var honTrabAtivo=document.getElementById('disc-hon-trab-ativo').checked;
+  var pctHT=parseFloat(document.getElementById('disc-hon-trab-pct').value)||0;
+  var honTrab=0;
+  if(honTrabAtivo){
+    var bHTsel=document.getElementById('disc-hon-trab-base').value;
+    var subtT=totBruto-(inssAtivo?inssTotal:0)-(irrfAtivo?irrfTotal:0);
+    var baseHT=bHTsel==='bruto'?totBruto:bHTsel==='sal'?totSal:bHTsel==='ind'?totInd:subtT;
+    honTrab=baseHT*(pctHT/100);
+  }
+  var valLiq=totBruto-(inssAtivo?inssTotal:0)-(irrfAtivo?irrfTotal:0)-(honTrabAtivo?honTrab:0);
+
+  // Encargos empregador
+  var inssPat=totSal*0.20;
+  var fgtsVal=totSal*0.08;
+  var multaAtiva=document.getElementById('disc-multa-ativo').checked;
+  var multaTotal=0;
+  if(multaAtiva){
+    var saldo=parseFloat(document.getElementById('disc-saldo-fgts').value)||0;
+    multaTotal=(saldo+fgtsVal)*0.40;
+  }
+  var honEmpAtivo=document.getElementById('disc-hon-emp-ativo').checked;
+  var pctHE=parseFloat(document.getElementById('disc-hon-emp-pct').value)||0;
+  var honEmp=honEmpAtivo?totBruto*(pctHE/100):0;
+  var custoTotal=totBruto+inssPat+fgtsVal+(multaAtiva?multaTotal:0)+(honEmpAtivo?honEmp:0);
+
+  // ── Monta planilha ────────────────────────────────────────────────
+  var rows=[];
+
+  rows.push(['LAWgico Cálculos — Discriminação de Verbas de Acordo']);
+  rows.push(['']);
+  rows.push(['Processo:',    proc,      '', 'Data do Acordo:', fd(dataAcordo)]);
+  rows.push(['Reclamante:',  recl,      '', 'Gerado em:',      fd(today())]);
+  rows.push(['Reclamada:',   reclada,   '', 'Meses de Vínculo:', nMesesVin]);
+  rows.push(['Juízo/Vara:',  juizo,     '', '', '']);
+  rows.push(['']);
+
+  // Tabela de verbas
+  rows.push(['VERBAS DO ACORDO']);
+  rows.push(['#','Verba / Pedido','Natureza','Valor (R$)']);
+  DISC_VERBAS.forEach(function(v,i){
+    var val=parseFloat(String(v.valor||'').replace(',','.'))||0;
+    rows.push([i+1, v.nome||'—', v.natureza==='ind'?'Indenizatória':'Salarial', fn(val)]);
+  });
+  rows.push(['','Total Salarial','',fn(totSal)]);
+  rows.push(['','Total Indenizatório','',fn(totInd)]);
+  rows.push(['','TOTAL DO ACORDO (BRUTO)','',fn(totBruto)]);
+  rows.push(['']);
+
+  // Painel trabalhador
+  rows.push(['PAINEL DO TRABALHADOR','','Valor (R$)']);
+  rows.push(['Valor do Acordo (bruto)','',fn(totBruto)]);
+  if(inssAtivo&&inssTotal>0){
+    rows.push(['(-) INSS Empregado (progressivo 2025)','',fn(-inssTotal)]);
+    rows.push(['    '+rr(inssMensal)+'/mês × '+nMInss+' meses','','']);
+  }
+  if(irrfAtivo&&irrfTotal>0){
+    rows.push(['(-) IRRF Art. 12-A — '+irrfAliq,'',fn(-irrfTotal)]);
+    rows.push(['    Renda fictícia: '+rr(rendaFicta)+'/mês','','']);
+  }
+  if(honTrabAtivo&&honTrab>0){
+    rows.push(['(-) Honorários Advocatícios '+pctHT+'%','',fn(-honTrab)]);
+  }
+  rows.push(['= VALOR LÍQUIDO DO TRABALHADOR','',fn(valLiq)]);
+  rows.push(['']);
+
+  // Painel empregador
+  rows.push(['PAINEL DO EMPREGADOR','','Valor (R$)']);
+  rows.push(['Valor do Acordo (bruto)','',fn(totBruto)]);
+  rows.push(['(+) INSS Patronal 20% (sobre salarial)','',fn(inssPat)]);
+  rows.push(['(+) FGTS 8% (sobre salarial)','',fn(fgtsVal)]);
+  if(multaAtiva&&multaTotal>0) rows.push(['(+) Multa FGTS 40%','',fn(multaTotal)]);
+  if(honEmpAtivo&&honEmp>0)    rows.push(['(+) Honorários Parte Contrária '+pctHE+'%','',fn(honEmp)]);
+  rows.push(['= CUSTO TOTAL DO EMPREGADOR','',fn(custoTotal)]);
+
+  if(obs.trim()){
+    rows.push(['']);
+    rows.push(['Observações:']);
+    rows.push([obs]);
+  }
+
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:44},{wch:22},{wch:20},{wch:20}];
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Discriminação de Verbas');
+
+  var fname='LAWgico_Discriminacao';
+  if(recl) fname+='_'+recl.split(' ')[0];
+  if(dataAcordo) fname+='_'+dataAcordo.replace(/-/g,'');
+  fname+='.xlsx';
+  XLSX.writeFile(wb,fname);
 }
 
 // ================================================================
