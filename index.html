@@ -214,7 +214,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
   <div class="module-tabs no-print">
     <button class="tab-btn active"    onclick="showMod('inicial',this)">📋 Cálculo Inicial</button>
     <button class="tab-btn disabled"  onclick="showComing('discriminacao',this)">🤝 Discriminação de Verbas</button>
-    <button class="tab-btn disabled"  onclick="showComing('fgts',this)">🏦 FGTS</button>
+    <button class="tab-btn"  onclick="showMod('fgts',this)">🏦 FGTS</button>
     <button class="tab-btn"  onclick="showMod('liquidacao',this)">⚖️ Liquidação de Sentença</button>
     <button class="tab-btn"  onclick="showMod('laudos',this)">📄 Laudos Periciais</button>
   </div>
@@ -1082,6 +1082,156 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
   </div><!-- /mod-liquidacao -->
 
   <!-- ╔══════════════════════════════════════════╗ -->
+  <!-- ║       MÓDULO: FGTS                       ║ -->
+  <!-- ╚══════════════════════════════════════════╝ -->
+  <div id="mod-fgts" style="display:none">
+
+    <div class="alert alert-info no-print">
+      ℹ️ <strong>FGTS — Depósitos não recolhidos e Multa de 40%</strong> — Informe os períodos em que o empregador não depositou o FGTS. O sistema calcula cada competência com correção monetária e apura a multa rescisória.
+    </div>
+
+    <!-- IDENTIFICAÇÃO -->
+    <div class="card">
+      <div class="card-header">📁 Identificação do Processo <span class="card-badge">FGTS</span></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="fg" style="grid-column:span 2"><label>Número do Processo</label><input type="text" id="fgts-proc" class="fc" placeholder="0000000-00.0000.5.00.0000"></div>
+          <div class="fg" style="grid-column:span 2"><label>Reclamante</label><input type="text" id="fgts-recl" class="fc" placeholder="Nome completo do reclamante"></div>
+          <div class="fg" style="grid-column:span 2"><label>Reclamada</label><input type="text" id="fgts-reclada" class="fc" placeholder="Nome da empresa reclamada"></div>
+          <div class="fg"><label>Juízo / Vara</label><input type="text" id="fgts-juizo" class="fc" placeholder="Ex.: 3ª Vara do Trabalho de SP"></div>
+          <div class="fg"><label>Data de Admissão</label><input type="date" id="fgts-admissao" class="fc"></div>
+          <div class="fg"><label>Data de Rescisão / Data-Base</label><input type="date" id="fgts-rescisao" class="fc"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ÍNDICE DE CORREÇÃO -->
+    <div class="card">
+      <div class="card-header">📈 Correção Monetária dos Depósitos</div>
+      <div class="card-body">
+        <div class="form-grid" style="align-items:end">
+          <div class="fg">
+            <label>Índice de Correção</label>
+            <select id="fgts-indice" class="fc" onchange="fgtsRefreshAll()">
+              <option value="IPCA-E+SELIC">IPCA-E → SELIC (Tema 1191 ★)</option>
+              <option value="SELIC">SELIC integral</option>
+              <option value="INPC">INPC</option>
+              <option value="TR">TR (≈ 0%)</option>
+            </select>
+          </div>
+          <div class="fg" style="grid-column:span 3">
+            <div class="alert alert-warn" style="margin-bottom:0">
+              ⚠️ <strong>Critério Judicial:</strong> Para depósitos não realizados, a maioria dos juízes aplica <em>IPCA-E → SELIC (Tema 1191)</em>. A TR é a taxa oficial da conta do FGTS. Verifique o entendimento do juízo.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PERÍODOS -->
+    <div class="card">
+      <div class="card-header">🗒️ Períodos de FGTS não recolhido <span class="card-badge no-print" id="fgts-badge-p">0 períodos</span></div>
+      <div class="card-body" style="padding:14px 16px">
+        <div class="tbl-wrap">
+          <table class="vtbl" style="min-width:880px">
+            <thead>
+              <tr>
+                <th class="cn">#</th>
+                <th style="width:130px;text-align:left">Período De</th>
+                <th style="width:130px;text-align:left">Período Até</th>
+                <th style="width:155px;text-align:left">Salário Mensal (R$)</th>
+                <th style="width:110px;text-align:left">Alíquota</th>
+                <th style="width:70px" class="rc">Meses</th>
+                <th style="width:115px" class="rc">FGTS / Mês</th>
+                <th style="width:150px" class="rc">Total Corrigido</th>
+                <th class="cdel no-print"></th>
+              </tr>
+            </thead>
+            <tbody id="fgts-tbody"></tbody>
+          </table>
+        </div>
+        <button class="add-row-btn no-print" onclick="fgtsAddPeriodo()">➕ Adicionar Período</button>
+      </div>
+    </div>
+
+    <!-- TOTAL FGTS CORRIGIDO -->
+    <div class="totals-panel" style="grid-template-columns:repeat(3,1fr)">
+      <div class="ti">
+        <div class="ti-label">FGTS Não Depositado</div>
+        <div class="ti-val accent" id="fgts-tot-dep">R$ 0,00</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px">Com correção monetária</div>
+      </div>
+      <div class="ti">
+        <div class="ti-label">Multa de 40%</div>
+        <div class="ti-val accent" id="fgts-tot-multa">R$ 0,00</div>
+      </div>
+      <div class="ti">
+        <div class="ti-label">⭐ TOTAL FGTS</div>
+        <div class="ti-val green" id="fgts-tot-total">R$ 0,00</div>
+      </div>
+    </div>
+
+    <!-- MULTA 40% -->
+    <div class="card">
+      <div class="card-header">💰 Multa Rescisória — 40%</div>
+      <div class="card-body">
+        <label class="chk-lbl">
+          <input type="checkbox" id="fgts-multa-ativo" onchange="fgtsToggleMulta()">
+          Aplicar multa de 40% (dispensa sem justa causa ou rescisão indireta)
+        </label>
+        <div id="fgts-multa-body" class="toggle-panel" style="display:none">
+          <div class="alert alert-info" style="margin-bottom:14px">
+            ℹ️ A multa incide sobre <strong>todo o saldo FGTS</strong>: depósitos já realizados (extrato da Caixa) <strong>mais</strong> os depósitos não realizados calculados acima.
+          </div>
+          <div class="form-grid">
+            <div class="fg">
+              <label>Saldo FGTS — conta vinculada (R$)</label>
+              <input type="number" step="0.01" id="fgts-saldo" class="fc" placeholder="Saldo do extrato da Caixa" oninput="fgtsRecalc()">
+              <span style="font-size:10px;color:#94a3b8;margin-top:3px;display:block">Depósitos anteriores já realizados — extrato FGTS/Caixa</span>
+            </div>
+            <div class="fg">
+              <label>Base da Multa (saldo + não depositado)</label>
+              <div class="result-box" id="fgts-base-multa" style="font-size:15px;font-weight:800">—</div>
+              <span style="font-size:10px;color:#94a3b8;margin-top:3px;display:block">Saldo da conta + FGTS não depositado corrigido</span>
+            </div>
+            <div class="fg">
+              <label>Multa de 40%</label>
+              <div class="result-box" id="fgts-multa-val" style="font-size:18px;font-weight:900;color:#dc2626;background:#fee2e2;border-color:#fca5a5">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OBSERVAÇÕES -->
+    <div class="card">
+      <div class="card-header">📝 Observações</div>
+      <div class="card-body">
+        <textarea class="obs-area" id="fgts-obs" placeholder="Critérios adotados, ressalvas, competências contestadas..."></textarea>
+      </div>
+    </div>
+
+    <!-- AÇÕES -->
+    <div class="actions-bar no-print">
+      <button class="btn btn-green"   onclick="fgtsSalvar()">💾 Salvar Cálculo</button>
+      <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+      <button class="btn btn-navy"    onclick="fgtsNovo()">📄 Novo Cálculo</button>
+      <button class="btn btn-outline" onclick="fgtsToggleSalvos()">📂 Cálculos Salvos</button>
+    </div>
+
+    <!-- SALVOS -->
+    <div id="fgts-salvos-panel" style="display:none">
+      <div class="card">
+        <div class="card-header">📂 Cálculos FGTS Salvos</div>
+        <div class="card-body" id="fgts-salvos-body">
+          <div class="empty-s"><div class="ei">📂</div>Nenhum cálculo salvo.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /mod-fgts -->
+
+  <!-- ╔══════════════════════════════════════════╗ -->
   <!-- ║           EM DESENVOLVIMENTO            ║ -->
   <!-- ╚══════════════════════════════════════════╝ -->
   <div id="mod-coming" style="display:none">
@@ -1544,11 +1694,11 @@ function novoCalc(){
 // ================================================================
 
 function showMod(mod,btn){
-  document.getElementById('mod-inicial').style.display   =(mod==='inicial')?'':'none';
-  document.getElementById('mod-laudos').style.display    =(mod==='laudos')?'':'none';
-  document.getElementById('mod-liquidacao').style.display=(mod==='liquidacao')?'':'none';
-  var coming=(mod!=='inicial'&&mod!=='laudos'&&mod!=='liquidacao');
-  document.getElementById('mod-coming').style.display=coming?'':'none';
+  ['inicial','laudos','liquidacao','fgts'].forEach(function(m){
+    document.getElementById('mod-'+m).style.display=(mod===m)?'':'none';
+  });
+  var ativos=['inicial','laudos','liquidacao','fgts'];
+  document.getElementById('mod-coming').style.display=(ativos.indexOf(mod)===-1)?'':'none';
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   if(btn) btn.classList.add('active');
 }
@@ -2182,6 +2332,226 @@ function liqNovo(){
 }
 
 // ================================================================
+// FGTS — Depósitos não recolhidos e Multa de 40%
+// ================================================================
+
+var FGTS_PERIODOS = [];
+var FGTS_PCONT   = 0;
+
+// Correção retroativa mês a mês para FGTS (escolha de índice)
+function calcFGTSRetroativo(mensalFGTS, ini, fim, indice){
+  if(!mensalFGTS||!ini) return 0;
+  var ms=monthRange(toYM(ini),toYM(fim||today()));
+  var total=0;
+  var toD=today();
+  ms.forEach(function(ym){
+    var f;
+    if     (indice==='IPCA-E+SELIC') f=fatorMisto(ym,toD);
+    else if(indice==='SELIC')        f=fatorAcum('SELIC',ym,toD);
+    else if(indice==='INPC')         f=fatorAcum('INPC',ym,toD);
+    else                             f=1; // TR ≈ 0
+    total+=mensalFGTS*f;
+  });
+  return total;
+}
+
+// ── PERÍODOS ─────────────────────────────────────────────────────
+
+function fgtsAddPeriodo(src){
+  FGTS_PCONT++;
+  var p=src?JSON.parse(JSON.stringify(src)):{};
+  p.id='fp'+FGTS_PCONT;
+  if(!p.aliq) p.aliq='8';
+  FGTS_PERIODOS.push(p);
+  fgtsRenderPeriodos();
+  fgtsRecalc();
+}
+
+function fgtsRemPeriodo(id){
+  FGTS_PERIODOS=FGTS_PERIODOS.filter(function(p){return p.id!==id;});
+  fgtsRenderPeriodos();
+  fgtsRecalc();
+}
+
+function fgtsSetField(id,field,val){
+  var p=FGTS_PERIODOS.find(function(x){return x.id===id;});
+  if(!p) return;
+  p[field]=val;
+  fgtsRecalcRow(id);
+  fgtsRecalc();
+}
+
+function fgtsRecalcRow(id){
+  var p=FGTS_PERIODOS.find(function(x){return x.id===id;});
+  if(!p) return;
+  var tr=document.querySelector('#fgts-tbody tr[data-id="'+id+'"]');
+  if(!tr) return;
+  var sal=parseFloat(p.sal)||0;
+  var aliq=parseFloat(p.aliq)||8;
+  var ini=p.ini||'';
+  var fim=p.fim||today();
+  var meses=(ini&&fim)?monthRange(toYM(ini),toYM(fim)).length:0;
+  var fgtsMensal=sal*aliq/100;
+  var indice=document.getElementById('fgts-indice').value;
+  var totalCorr=(fgtsMensal&&ini)?calcFGTSRetroativo(fgtsMensal,ini,fim,indice):0;
+  tr.querySelector('.fp-meses').textContent  =meses?meses:'—';
+  tr.querySelector('.fp-mensal').textContent =fgtsMensal?rr(fgtsMensal):'—';
+  tr.querySelector('.fp-total').textContent  =totalCorr?rr(totalCorr):'—';
+}
+
+function fgtsRefreshAll(){
+  FGTS_PERIODOS.forEach(function(p){fgtsRecalcRow(p.id);});
+  fgtsRecalc();
+}
+
+function fgtsRenderPeriodos(){
+  var tb=document.getElementById('fgts-tbody');
+  tb.innerHTML='';
+  FGTS_PERIODOS.forEach(function(p,i){
+    var tr=document.createElement('tr');
+    tr.setAttribute('data-id',p.id);
+    var sti='width:100%;border:1.5px solid #e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;color:#1e293b';
+    tr.innerHTML=
+      '<td class="cn">'+(i+1)+'</td>'+
+      '<td><input type="date" value="'+(p.ini||'')+'" onchange="fgtsSetField(\''+p.id+'\',\'ini\',this.value)" style="'+sti+'"></td>'+
+      '<td><input type="date" value="'+(p.fim||'')+'" onchange="fgtsSetField(\''+p.id+'\',\'fim\',this.value)" style="'+sti+'"></td>'+
+      '<td><input type="number" step="0.01" min="0" placeholder="0,00" value="'+(p.sal||'')+'" oninput="fgtsSetField(\''+p.id+'\',\'sal\',this.value)" style="'+sti+'"></td>'+
+      '<td>'+
+        '<select onchange="fgtsSetField(\''+p.id+'\',\'aliq\',this.value)" style="'+sti+'">'+
+          '<option value="8"'+((!p.aliq||p.aliq==='8')?' selected':'')+'>8% — CLT art. 15</option>'+
+          '<option value="2"'+(p.aliq==='2'?' selected':'')+'>2% — Aprendiz</option>'+
+        '</select>'+
+      '</td>'+
+      '<td class="rc"><span class="rc-cell fp-meses" style="font-size:12px">—</span></td>'+
+      '<td class="rc"><span class="rc-cell fp-mensal" style="font-size:12px">—</span></td>'+
+      '<td class="rc"><span class="rc-cell rc-total fp-total" style="font-size:13px">—</span></td>'+
+      '<td class="cdel no-print"><button class="del-btn" onclick="fgtsRemPeriodo(\''+p.id+'\')" title="Remover">🗑️</button></td>';
+    tb.appendChild(tr);
+    fgtsRecalcRow(p.id);
+  });
+  document.getElementById('fgts-badge-p').textContent=
+    FGTS_PERIODOS.length+(FGTS_PERIODOS.length===1?' período':' períodos');
+}
+
+// ── RECALC PRINCIPAL ──────────────────────────────────────────────
+
+function fgtsToggleMulta(){
+  var ativo=document.getElementById('fgts-multa-ativo').checked;
+  document.getElementById('fgts-multa-body').style.display=ativo?'':'none';
+  fgtsRecalc();
+}
+
+function fgtsRecalc(){
+  // 1. Soma os períodos
+  var indice=document.getElementById('fgts-indice').value;
+  var totalFGTS=0;
+  FGTS_PERIODOS.forEach(function(p){
+    var sal=parseFloat(p.sal)||0;
+    var aliq=parseFloat(p.aliq)||8;
+    var ini=p.ini||'';
+    var fim=p.fim||today();
+    var fgtsMensal=sal*aliq/100;
+    if(fgtsMensal&&ini) totalFGTS+=calcFGTSRetroativo(fgtsMensal,ini,fim,indice);
+  });
+
+  document.getElementById('fgts-tot-dep').textContent=rr(totalFGTS);
+
+  // 2. Multa 40%
+  var multaTotal=0;
+  var multaAtiva=document.getElementById('fgts-multa-ativo').checked;
+  if(multaAtiva){
+    var saldoConta=parseFloat(document.getElementById('fgts-saldo').value)||0;
+    var baseMulta=saldoConta+totalFGTS;
+    multaTotal=baseMulta*0.40;
+    document.getElementById('fgts-base-multa').textContent=rr(baseMulta);
+    document.getElementById('fgts-multa-val').textContent =rr(multaTotal);
+  }
+  document.getElementById('fgts-tot-multa').textContent=rr(multaAtiva?multaTotal:0);
+  document.getElementById('fgts-tot-total').textContent=rr(totalFGTS+(multaAtiva?multaTotal:0));
+}
+
+// ── SAVE / LOAD ───────────────────────────────────────────────────
+
+function fgtsSalvar(){
+  if(!FGTS_PERIODOS.length){alert('Adicione ao menos um período antes de salvar.');return;}
+  var proc=document.getElementById('fgts-proc').value||
+           document.getElementById('fgts-recl').value||'FGTS sem título';
+  var totTxt=document.getElementById('fgts-tot-total').textContent;
+  var s=JSON.parse(localStorage.getItem('lawgico_fgts')||'[]');
+  s.unshift({
+    id:'fg'+Date.now(),titulo:proc,
+    data:new Date().toLocaleDateString('pt-BR'),
+    totTxt:totTxt,
+    periodos:JSON.parse(JSON.stringify(FGTS_PERIODOS)),
+    indice:document.getElementById('fgts-indice').value,
+    multaAtiva:document.getElementById('fgts-multa-ativo').checked,
+    saldo:document.getElementById('fgts-saldo').value,
+    obs:document.getElementById('fgts-obs').value
+  });
+  localStorage.setItem('lawgico_fgts',JSON.stringify(s));
+  alert('✅ Cálculo FGTS salvo com sucesso!');
+  fgtsRenderSalvos();
+}
+
+function fgtsRenderSalvos(){
+  var s=JSON.parse(localStorage.getItem('lawgico_fgts')||'[]');
+  var el=document.getElementById('fgts-salvos-body');
+  if(!s.length){el.innerHTML='<div class="empty-s"><div class="ei">📂</div>Nenhum cálculo salvo.</div>';return;}
+  el.innerHTML='<div class="saved-list">'+s.map(function(c){
+    return '<div class="si" onclick="fgtsCarregar(\''+c.id+'\')">'+
+      '<div style="flex:1">'+
+        '<div class="si-title">'+(c.titulo||'(sem título)')+'</div>'+
+        '<div class="si-meta">Salvo em '+c.data+'&nbsp;·&nbsp;'+(c.periodos||[]).length+' período(s)</div>'+
+      '</div>'+
+      '<div class="si-val">'+c.totTxt+'</div>'+
+      '<button class="si-del no-print" onclick="event.stopPropagation();fgtsDel(\''+c.id+'\')" title="Excluir">🗑️</button>'+
+    '</div>';
+  }).join('')+'</div>';
+}
+
+function fgtsCarregar(cid){
+  var s=JSON.parse(localStorage.getItem('lawgico_fgts')||'[]');
+  var obj=s.find(function(c){return c.id===cid;});
+  if(!obj) return;
+  FGTS_PERIODOS=[];FGTS_PCONT=0;
+  (obj.periodos||[]).forEach(function(p){fgtsAddPeriodo(p);});
+  if(obj.indice) document.getElementById('fgts-indice').value=obj.indice;
+  document.getElementById('fgts-multa-ativo').checked=!!obj.multaAtiva;
+  document.getElementById('fgts-saldo').value=obj.saldo||'';
+  document.getElementById('fgts-obs').value=obj.obs||'';
+  fgtsToggleMulta();
+  fgtsRenderPeriodos();fgtsRecalc();
+  document.getElementById('fgts-salvos-panel').style.display='none';
+  window.scrollTo(0,0);
+}
+
+function fgtsDel(cid){
+  if(!confirm('Excluir este cálculo?'))return;
+  var s=JSON.parse(localStorage.getItem('lawgico_fgts')||'[]').filter(function(c){return c.id!==cid;});
+  localStorage.setItem('lawgico_fgts',JSON.stringify(s));
+  fgtsRenderSalvos();
+}
+
+function fgtsToggleSalvos(){
+  var p=document.getElementById('fgts-salvos-panel');
+  p.style.display=(p.style.display==='none')?'block':'none';
+  if(p.style.display==='block') fgtsRenderSalvos();
+}
+
+function fgtsNovo(){
+  if(!confirm('Iniciar novo cálculo FGTS? Os dados não salvos serão perdidos.'))return;
+  FGTS_PERIODOS=[];FGTS_PCONT=0;
+  ['fgts-proc','fgts-recl','fgts-reclada','fgts-juizo',
+   'fgts-admissao','fgts-rescisao','fgts-saldo','fgts-obs'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('fgts-multa-ativo').checked=false;
+  fgtsToggleMulta();
+  fgtsRenderPeriodos();fgtsRecalc();
+  fgtsAddPeriodo();
+}
+
+// ================================================================
 // INICIALIZAÇÃO
 // ================================================================
 
@@ -2195,6 +2565,7 @@ document.getElementById('liq-datab').value=today();
 // Adiciona a primeira linha em branco
 addVerba();
 liqAddVerba();
+fgtsAddPeriodo();
 </script>
 </body>
 </html>
