@@ -135,6 +135,38 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
 .quantum-box .qv{font-size:22px;font-weight:900;color:#059669}
 .quantum-box .qi{font-size:10px;color:#94a3b8;margin-top:2px}
 
+/* === LIQUIDAÇÃO DE SENTENÇA === */
+.liq-subtotais{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.liq-sub{background:white;border-radius:10px;padding:16px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.07);border:2px solid #e2e8f0}
+.liq-sub-label{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.liq-sub-val{font-size:18px;font-weight:900}
+.liq-sub-val.sal{color:#0A2463}
+.liq-sub-val.ind{color:#7c3aed}
+.liq-sub-val.bruto{color:#059669}
+.resumo-liq{width:100%;border-collapse:collapse}
+.resumo-liq tr{border-bottom:1px solid #f1f5f9}
+.resumo-liq td{padding:10px 16px;font-size:13px}
+.resumo-liq .rl{color:#475569}
+.resumo-liq .rv{text-align:right;font-weight:700;color:#334155;white-space:nowrap}
+.resumo-liq .rv.neg{color:#dc2626}
+.resumo-liq .rv.liq{color:#059669;font-size:16px;font-weight:900}
+.resumo-liq .row-sep{background:#f8fafc}
+.resumo-liq .row-sep td{font-weight:800;color:#0A2463;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:8px 16px}
+.resumo-liq .row-liq td{background:linear-gradient(90deg,#f0fdf4,#dcfce7);font-weight:900;font-size:14px;padding:14px 16px}
+.inss-breakdown{margin-top:12px;background:#f8fafc;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0}
+.inss-breakdown table{width:100%;border-collapse:collapse;font-size:12px}
+.inss-breakdown th{background:#f1f5f9;color:#475569;font-weight:700;padding:7px 10px;text-align:left;border-bottom:1px solid #e2e8f0;font-size:10px;text-transform:uppercase;letter-spacing:.3px}
+.inss-breakdown th.rc{text-align:right}
+.inss-breakdown td{padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#334155}
+.inss-breakdown td.rc{text-align:right;font-weight:600}
+.inss-breakdown .row-teto td{background:#fff7ed;font-weight:800}
+.enc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:12px}
+.enc-item{background:#f8fafc;border-radius:8px;padding:12px;border:1px solid #e2e8f0;text-align:center}
+.enc-item-label{font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.enc-item-val{font-size:16px;font-weight:900;color:#0A2463}
+.enc-item-pct{font-size:10px;color:#94a3b8;margin-top:2px}
+.toggle-panel{margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9}
+
 /* === PRINT === */
 @media print{
   .app-header{position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -183,7 +215,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
     <button class="tab-btn active"    onclick="showMod('inicial',this)">📋 Cálculo Inicial</button>
     <button class="tab-btn disabled"  onclick="showComing('discriminacao',this)">🤝 Discriminação de Verbas</button>
     <button class="tab-btn disabled"  onclick="showComing('fgts',this)">🏦 FGTS</button>
-    <button class="tab-btn disabled"  onclick="showComing('liquidacao',this)">⚖️ Liquidação de Sentença</button>
+    <button class="tab-btn"  onclick="showMod('liquidacao',this)">⚖️ Liquidação de Sentença</button>
     <button class="tab-btn"  onclick="showMod('laudos',this)">📄 Laudos Periciais</button>
   </div>
 </header>
@@ -735,6 +767,321 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
   </div><!-- /mod-laudos -->
 
   <!-- ╔══════════════════════════════════════════╗ -->
+  <!-- ║      MÓDULO: LIQUIDAÇÃO DE SENTENÇA      ║ -->
+  <!-- ╚══════════════════════════════════════════╝ -->
+  <div id="mod-liquidacao" style="display:none">
+
+    <div class="alert alert-info no-print">
+      ℹ️ <strong>Liquidação de Sentença / Acórdão</strong> — Lance as verbas com correção monetária, classifique por natureza (salarial/indenizatória) e apure os descontos legais (INSS progressivo, IRRF art. 12-A, honorários) para chegar ao valor líquido.
+    </div>
+
+    <!-- IDENTIFICAÇÃO -->
+    <div class="card">
+      <div class="card-header">📁 Identificação do Processo <span class="card-badge">LIQUIDAÇÃO</span></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="fg" style="grid-column:span 2"><label>Número do Processo</label><input type="text" id="liq-proc" class="fc" placeholder="0000000-00.0000.5.00.0000"></div>
+          <div class="fg" style="grid-column:span 2"><label>Reclamante</label><input type="text" id="liq-recl" class="fc" placeholder="Nome completo do reclamante"></div>
+          <div class="fg" style="grid-column:span 2"><label>Reclamada</label><input type="text" id="liq-reclada" class="fc" placeholder="Nome da empresa reclamada"></div>
+          <div class="fg"><label>Juízo / Vara</label><input type="text" id="liq-juizo" class="fc" placeholder="Ex.: 3ª Vara do Trabalho de SP"></div>
+          <div class="fg">
+            <label>Tipo de Decisão</label>
+            <select id="liq-tipo" class="fc">
+              <option value="sentença">Sentença</option>
+              <option value="acórdão">Acórdão</option>
+              <option value="homologação">Homologação de Acordo</option>
+            </select>
+          </div>
+          <div class="fg"><label>Data da Sentença / Acórdão</label><input type="date" id="liq-datasent" class="fc"></div>
+          <div class="fg"><label>Data-Base do Cálculo ★</label><input type="date" id="liq-datab" class="fc"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VERBAS -->
+    <div class="card">
+      <div class="card-header">🗒️ Verbas / Pedidos Deferidos <span class="card-badge no-print" id="liq-badge-v">0 verbas</span></div>
+      <div class="card-body" style="padding:14px 16px">
+        <div class="alert alert-warn no-print">
+          ⚠️ <strong>Natureza das Verbas:</strong> Classifique como <em>Salarial</em> (base para INSS, IRRF e FGTS) ou <em>Indenizatória</em> (isenta de INSS/IRRF). A classificação impacta diretamente os descontos legais.
+        </div>
+        <div class="tbl-wrap">
+          <table class="vtbl" style="min-width:1360px">
+            <thead>
+              <tr>
+                <th class="cn">#</th>
+                <th class="cv">Verba / Pedido</th>
+                <th style="width:130px;text-align:left">Natureza</th>
+                <th class="cvl">Valor Original (R$)</th>
+                <th class="cd">Data Início</th>
+                <th class="cd">Data-Base</th>
+                <th class="ci">Índice de Correção</th>
+                <th class="cj cc">Juros<br>1%/mês</th>
+                <th class="cr rc">Meses</th>
+                <th class="cf rc">Fator</th>
+                <th class="cc2 rc">Valor Corrigido</th>
+                <th class="cjv rc">Valor Juros</th>
+                <th class="ct rc">Total Atualizado</th>
+                <th class="cdel no-print"></th>
+              </tr>
+            </thead>
+            <tbody id="liq-vtbody"></tbody>
+          </table>
+        </div>
+        <button class="add-row-btn no-print" onclick="liqAddVerba()">➕ Adicionar Verba / Pedido</button>
+      </div>
+    </div>
+
+    <!-- SUBTOTAIS -->
+    <div class="liq-subtotais">
+      <div class="liq-sub">
+        <div class="liq-sub-label">🔵 Total Salarial</div>
+        <div class="liq-sub-val sal" id="liq-tot-sal">R$ 0,00</div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:4px">Base para INSS, IRRF e FGTS</div>
+      </div>
+      <div class="liq-sub">
+        <div class="liq-sub-label">🟣 Total Indenizatório</div>
+        <div class="liq-sub-val ind" id="liq-tot-ind">R$ 0,00</div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:4px">Isento de INSS e IRRF</div>
+      </div>
+      <div class="liq-sub">
+        <div class="liq-sub-label">🟢 Total Bruto</div>
+        <div class="liq-sub-val bruto" id="liq-tot-bruto">R$ 0,00</div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:4px">Soma de todas as verbas</div>
+      </div>
+    </div>
+
+    <!-- INSS EMPREGADO -->
+    <div class="card">
+      <div class="card-header">🏛️ INSS — Empregado (Tabela Progressiva 2025)</div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+          <label class="chk-lbl">
+            <input type="checkbox" id="liq-inss-ativo" onchange="liqRecalc()" checked>
+            Aplicar INSS sobre verbas salariais
+          </label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">Nº de competências (meses)</label>
+            <input type="number" id="liq-inss-meses" class="fc" style="width:90px" min="1" placeholder="Ex.: 24" oninput="liqRecalc()">
+          </div>
+        </div>
+        <div class="toggle-panel">
+          <div class="inss-breakdown">
+            <table>
+              <thead>
+                <tr>
+                  <th>Faixa Salarial (mensal)</th>
+                  <th class="rc">Alíquota</th>
+                  <th class="rc">Base Trib. Mensal na Faixa</th>
+                  <th class="rc">INSS na Faixa (mensal)</th>
+                </tr>
+              </thead>
+              <tbody id="liq-inss-rows">
+                <tr><td colspan="4" style="text-align:center;padding:14px;color:#94a3b8">Preencha o total salarial e o nº de competências para ver o detalhamento.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:20px;margin-top:12px;padding-top:12px;border-top:2px solid #e2e8f0">
+            <div style="text-align:right">
+              <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">INSS Mensal</div>
+              <div style="font-size:16px;font-weight:900;color:#dc2626" id="liq-inss-mensal-val">—</div>
+            </div>
+            <div style="width:1px;height:36px;background:#e2e8f0"></div>
+            <div style="text-align:right">
+              <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">INSS Total (× meses)</div>
+              <div style="font-size:22px;font-weight:900;color:#dc2626" id="liq-inss-total-val">—</div>
+            </div>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:#94a3b8">Teto 2025: R$ 951,62/mês · Faixas: 7,5% / 9% / 12% / 14% (sobre base até R$ 8.157,41)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IRRF ART. 12-A -->
+    <div class="card">
+      <div class="card-header">📊 IRRF — Art. 12-A da Lei 7.713/88 (Rendimentos Acumulados)</div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:12px">
+          <label class="chk-lbl">
+            <input type="checkbox" id="liq-irrf-ativo" onchange="liqToggleIRRF()" checked>
+            Aplicar IRRF sobre rendimentos acumulados (art. 12-A)
+          </label>
+        </div>
+        <div id="liq-irrf-body">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Nº de Meses do Período</label>
+              <input type="number" id="liq-irrf-meses" class="fc" min="1" placeholder="Ex.: 24" oninput="liqRecalc()">
+            </div>
+            <div class="fg">
+              <label>Deduções Mensais (R$)</label>
+              <input type="number" step="0.01" id="liq-irrf-ded" class="fc" placeholder="R$ 189,59 por dependente, pensão..." oninput="liqRecalc()">
+            </div>
+          </div>
+          <div style="margin-top:14px;background:#f8fafc;border-radius:8px;padding:14px 16px;border:1px solid #e2e8f0">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">
+              <div>
+                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Base Tributável</div>
+                <div style="font-size:14px;font-weight:800;color:#334155" id="liq-irrf-base">—</div>
+                <div style="font-size:10px;color:#94a3b8">Salarial − INSS − Deduções</div>
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Renda Mensal Ficta</div>
+                <div style="font-size:14px;font-weight:800;color:#334155" id="liq-irrf-renda">—</div>
+                <div style="font-size:10px;color:#94a3b8">Base ÷ nº de meses</div>
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Alíquota Efetiva</div>
+                <div style="font-size:15px;font-weight:800;color:#334155" id="liq-irrf-aliq">—</div>
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">IRRF Total</div>
+                <div style="font-size:22px;font-weight:900;color:#dc2626" id="liq-irrf-total">—</div>
+                <div style="font-size:10px;color:#94a3b8" id="liq-irrf-info"></div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:#94a3b8">Tabela 2025: Isento até R$ 2.428,80 · 7,5% · 15% · 22,5% · 27,5% (acima de R$ 4.664,68) · Dedução: R$ 189,59/dependente</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HONORÁRIOS -->
+    <div class="card">
+      <div class="card-header">⚖️ Honorários Advocatícios</div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+          <label class="chk-lbl">
+            <input type="checkbox" id="liq-hon-ativo" onchange="liqToggleHon()">
+            Calcular honorários advocatícios
+          </label>
+        </div>
+        <div id="liq-hon-body" class="toggle-panel" style="display:none">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Percentual (%)</label>
+              <input type="number" step="0.5" id="liq-hon-pct" class="fc" value="15" min="0" max="30" placeholder="Ex.: 15" oninput="liqRecalc()">
+            </div>
+            <div class="fg">
+              <label>Base de Cálculo</label>
+              <select id="liq-hon-base" class="fc" onchange="liqRecalc()">
+                <option value="bruto">Total Bruto</option>
+                <option value="sal">Total Salarial</option>
+                <option value="ind">Total Indenizatório</option>
+                <option value="liq">Valor Líquido (após INSS e IRRF)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Honorários Calculados</label>
+              <div class="result-box" id="liq-hon-val" style="font-size:16px;font-weight:900">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENCARGOS RECLAMADA -->
+    <div class="card">
+      <div class="card-header">🏢 Encargos da Reclamada — Informativo</div>
+      <div class="card-body">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px">Estimativa de encargos sobre o total salarial deferido (referência para negociação / provisão).</div>
+        <div class="enc-grid">
+          <div class="enc-item">
+            <div class="enc-item-label">INSS Patronal</div>
+            <div class="enc-item-val" id="enc-inss-pat">—</div>
+            <div class="enc-item-pct">20% s/ total salarial</div>
+          </div>
+          <div class="enc-item">
+            <div class="enc-item-label">FGTS</div>
+            <div class="enc-item-val" id="enc-fgts">—</div>
+            <div class="enc-item-pct">8% s/ total salarial</div>
+          </div>
+          <div class="enc-item">
+            <div class="enc-item-label">Multa FGTS (40%)</div>
+            <div class="enc-item-val" id="enc-multa-fgts">—</div>
+            <div class="enc-item-pct">40% s/ FGTS</div>
+          </div>
+          <div class="enc-item" style="border-color:#0A2463">
+            <div class="enc-item-label" style="color:#0A2463">Total Encargos</div>
+            <div class="enc-item-val" id="enc-total">—</div>
+            <div class="enc-item-pct">INSS + FGTS + Multa</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESUMO FINAL -->
+    <div class="card">
+      <div class="card-header">⭐ Resumo Final — Apuração do Valor Líquido</div>
+      <div class="card-body" style="padding:0">
+        <table class="resumo-liq">
+          <tbody>
+            <tr>
+              <td class="rl">🔵 Total Salarial Bruto</td>
+              <td class="rv sal" id="res-sal">R$ 0,00</td>
+            </tr>
+            <tr>
+              <td class="rl">🟣 Total Indenizatório</td>
+              <td class="rv ind" id="res-ind">R$ 0,00</td>
+            </tr>
+            <tr class="row-sep">
+              <td><strong>Total Bruto Geral</strong></td>
+              <td class="rv" id="res-bruto" style="color:#059669;font-size:14px">R$ 0,00</td>
+            </tr>
+            <tr>
+              <td class="rl">(-) INSS Empregado</td>
+              <td class="rv neg" id="res-inss">R$ 0,00</td>
+            </tr>
+            <tr>
+              <td class="rl">(-) IRRF Art. 12-A</td>
+              <td class="rv neg" id="res-irrf">R$ 0,00</td>
+            </tr>
+            <tr class="row-sep">
+              <td><strong>Subtotal (após descontos)</strong></td>
+              <td class="rv" id="res-subtotal" style="font-size:14px">R$ 0,00</td>
+            </tr>
+            <tr>
+              <td class="rl">(-) Honorários Advocatícios</td>
+              <td class="rv neg" id="res-hon">R$ 0,00</td>
+            </tr>
+            <tr class="row-liq">
+              <td style="color:#059669;font-size:15px;font-weight:900">⭐ VALOR LÍQUIDO A RECEBER</td>
+              <td class="rv liq" id="res-liq">R$ 0,00</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- OBSERVAÇÕES -->
+    <div class="card">
+      <div class="card-header">📝 Observações</div>
+      <div class="card-body">
+        <textarea class="obs-area" id="liq-obs" placeholder="Critérios adotados, ressalvas, cálculos auxiliares..."></textarea>
+      </div>
+    </div>
+
+    <!-- AÇÕES -->
+    <div class="actions-bar no-print">
+      <button class="btn btn-green"   onclick="liqSalvar()">💾 Salvar Liquidação</button>
+      <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+      <button class="btn btn-navy"    onclick="liqNovo()">📄 Nova Liquidação</button>
+      <button class="btn btn-outline" onclick="liqToggleSalvos()">📂 Liquidações Salvas</button>
+    </div>
+
+    <!-- SALVOS -->
+    <div id="liq-salvos-panel" style="display:none">
+      <div class="card">
+        <div class="card-header">📂 Liquidações Salvas</div>
+        <div class="card-body" id="liq-salvos-body">
+          <div class="empty-s"><div class="ei">📂</div>Nenhuma liquidação salva.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /mod-liquidacao -->
+
+  <!-- ╔══════════════════════════════════════════╗ -->
   <!-- ║           EM DESENVOLVIMENTO            ║ -->
   <!-- ╚══════════════════════════════════════════╝ -->
   <div id="mod-coming" style="display:none">
@@ -1197,18 +1544,18 @@ function novoCalc(){
 // ================================================================
 
 function showMod(mod,btn){
-  document.getElementById('mod-inicial').style.display=(mod==='inicial')?'':'none';
-  document.getElementById('mod-laudos').style.display=(mod==='laudos')?'':'none';
-  document.getElementById('mod-coming').style.display=(mod!=='inicial'&&mod!=='laudos')?'':'none';
+  document.getElementById('mod-inicial').style.display   =(mod==='inicial')?'':'none';
+  document.getElementById('mod-laudos').style.display    =(mod==='laudos')?'':'none';
+  document.getElementById('mod-liquidacao').style.display=(mod==='liquidacao')?'':'none';
+  var coming=(mod!=='inicial'&&mod!=='laudos'&&mod!=='liquidacao');
+  document.getElementById('mod-coming').style.display=coming?'':'none';
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   if(btn) btn.classList.add('active');
 }
 
 var COMING_NAMES={
   discriminacao:'Discriminação de Verbas de Acordo',
-  fgts:'FGTS — Depósitos e Multa de 40%',
-  liquidacao:'Liquidação de Sentença / Acórdão',
-  laudos:'Laudos Periciais'
+  fgts:'FGTS — Depósitos e Multa de 40%'
 };
 
 function showComing(nome,btn){
@@ -1475,6 +1822,366 @@ function leToggleSalvos(){var p=document.getElementById('le-salvos-panel');p.sty
 function leNovo(){if(!confirm('Novo laudo ergonômico?'))return;['le-proc','le-recl','le-reclada','le-perito','le-posto','le-cid','le-diag','le-obs','le-moral','le-outros'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});for(var i=1;i<=10;i++){var cb=document.getElementById('le-f'+i);if(cb)cb.checked=false;}document.getElementById('le-ins-sim').value='nao';leInsChange();}
 
 // ================================================================
+// LIQUIDAÇÃO DE SENTENÇA
+// ================================================================
+
+var LIQ_VERBAS = [];
+var LIQ_VCONT  = 0;
+
+// INSS Progressivo 2025
+var INSS_FAIXAS = [
+  {ate:1518.00, aliq:0.075},
+  {ate:2793.88, aliq:0.09},
+  {ate:4190.83, aliq:0.12},
+  {ate:8157.41, aliq:0.14}
+];
+var INSS_TETO = 951.62;
+
+function calcINSSProgressivo(baseMensal){
+  if(!baseMensal||baseMensal<=0) return{total:0,breakdown:[]};
+  var total=0,breakdown=[],prev=0;
+  for(var i=0;i<INSS_FAIXAS.length;i++){
+    var f=INSS_FAIXAS[i];
+    if(baseMensal<=prev) break;
+    var trib=Math.min(baseMensal,f.ate)-prev;
+    if(trib<=0) break;
+    var val=trib*f.aliq;
+    breakdown.push({ate:f.ate,aliq:f.aliq,trib:trib,val:val});
+    total+=val;
+    prev=f.ate;
+    if(baseMensal<=f.ate) break;
+  }
+  total=Math.min(total,INSS_TETO);
+  return{total:total,breakdown:breakdown};
+}
+
+// IRRF Art. 12-A — tabela progressiva mensal 2025
+function calcIRRFMensal(rendaMensal){
+  if(rendaMensal<=2428.80) return{val:0,aliq:0,txt:'Isento'};
+  var v,a,t;
+  if(rendaMensal<=2826.65){v=rendaMensal*0.075-182.16;a=0.075;t='7,5%';}
+  else if(rendaMensal<=3751.05){v=rendaMensal*0.15-394.16;a=0.15;t='15%';}
+  else if(rendaMensal<=4664.68){v=rendaMensal*0.225-675.59;a=0.225;t='22,5%';}
+  else{v=rendaMensal*0.275-908.74;a=0.275;t='27,5%';}
+  return{val:Math.max(0,v),aliq:a,txt:t};
+}
+
+// ── VERBAS ────────────────────────────────────────────────────────
+
+function liqAddVerba(src){
+  LIQ_VCONT++;
+  var v=src?JSON.parse(JSON.stringify(src)):{};
+  v.id='lq'+LIQ_VCONT;
+  if(!v.indice)   v.indice='IPCA-E+SELIC';
+  if(v.juros===undefined) v.juros=true;
+  if(!v.nome)     v.nome='';
+  if(!v.natureza) v.natureza='sal';
+  LIQ_VERBAS.push(v);
+  liqRenderVerbas();
+  liqRecalc();
+}
+
+function liqRemVerba(id){
+  LIQ_VERBAS=LIQ_VERBAS.filter(function(v){return v.id!==id;});
+  liqRenderVerbas();
+  liqRecalc();
+}
+
+function liqSetField(id,field,val){
+  var v=LIQ_VERBAS.find(function(x){return x.id===id;});
+  if(!v) return;
+  v[field]=val;
+  if(field==='indice'&&val==='SELIC') v.juros=false;
+  liqRenderRow(id);
+  liqRecalc();
+}
+
+function liqSetFieldAndRender(id,field,val){
+  liqSetField(id,field,val);
+  liqRenderVerbas();
+  liqRecalc();
+}
+
+function liqRenderRow(id){
+  var v=LIQ_VERBAS.find(function(x){return x.id===id;});
+  if(!v) return;
+  var res=calcVerba(v);
+  var tr=document.querySelector('#liq-vtbody tr[data-id="'+id+'"]');
+  if(!tr) return;
+  tr.querySelector('.res-m').textContent=res.ok?res.meses:'—';
+  tr.querySelector('.res-f').textContent=res.ok?res.fator.toFixed(6):'—';
+  tr.querySelector('.res-c').textContent=res.ok?rr(res.corr):'—';
+  tr.querySelector('.res-j').textContent=res.ok?(v.indice==='SELIC'?'—':rr(res.juros)):'—';
+  tr.querySelector('.res-t').textContent=res.ok?rr(res.total):'—';
+}
+
+function liqRenderVerbas(){
+  var tb=document.getElementById('liq-vtbody');
+  tb.innerHTML='';
+  LIQ_VERBAS.forEach(function(v,i){
+    var nopts=NOMES_VERBAS.map(function(n){
+      return '<option value="'+n+'"'+(v.nome===n?' selected':'')+'>'+n+'</option>';
+    }).join('');
+    var iopts=IDX_OPTS.map(function(o){
+      return '<option value="'+o[0]+'"'+(v.indice===o[0]?' selected':'')+'>'+o[1]+'</option>';
+    }).join('');
+    var isSelic=(v.indice==='SELIC');
+    var customInput=(v.nome==='✏️ Outra (digitar abaixo)')
+      ?'<input type="text" placeholder="Nome da verba..." value="'+(v.nomeCustom||'')+'" oninput="var vv=LIQ_VERBAS.find(function(x){return x.id===\''+v.id+'\'});if(vv)vv.nomeCustom=this.value" style="margin-top:4px;width:100%;border:1.5px solid #e2e8f0;border-radius:6px;padding:4px 7px;font-size:11.5px">'
+      :'';
+    var tr=document.createElement('tr');
+    tr.setAttribute('data-id',v.id);
+    tr.innerHTML=
+      '<td class="cn">'+(i+1)+'</td>'+
+      '<td class="cv">'+
+        '<select onchange="liqSetFieldAndRender(\''+v.id+'\',\'nome\',this.value)">'+nopts+'</select>'+
+        customInput+
+      '</td>'+
+      '<td style="min-width:120px">'+
+        '<select onchange="liqSetField(\''+v.id+'\',\'natureza\',this.value)" style="width:100%;border:1.5px solid #e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;color:#1e293b">'+
+          '<option value="sal"'+(v.natureza==='sal'?' selected':'')+'>🔵 Salarial</option>'+
+          '<option value="ind"'+(v.natureza==='ind'?' selected':'')+'>🟣 Indenizatória</option>'+
+        '</select>'+
+      '</td>'+
+      '<td class="cvl"><input type="number" step="0.01" min="0" placeholder="0,00" value="'+(v.valor||'')+'" oninput="liqSetField(\''+v.id+'\',\'valor\',this.value)"></td>'+
+      '<td class="cd"><input type="date" value="'+(v.ini||'')+'" onchange="liqSetField(\''+v.id+'\',\'ini\',this.value)"></td>'+
+      '<td class="cd"><input type="date" value="'+(v.fim||'')+'" onchange="liqSetField(\''+v.id+'\',\'fim\',this.value)"></td>'+
+      '<td class="ci"><select onchange="liqSetFieldAndRender(\''+v.id+'\',\'indice\',this.value)">'+iopts+'</select></td>'+
+      '<td class="cj" style="text-align:center">'+
+        '<input type="checkbox" '+(v.juros?'checked':'')+' '+(isSelic?'disabled title="SELIC já inclui juros e correção"':'')+
+        ' onchange="liqSetField(\''+v.id+'\',\'juros\',this.checked)" style="width:17px;height:17px;cursor:'+(isSelic?'not-allowed':'pointer')+'">'+
+      '</td>'+
+      '<td class="cr"><span class="rc-cell res-m">—</span></td>'+
+      '<td class="cf"><span class="rc-cell res-f">—</span></td>'+
+      '<td class="cc2"><span class="rc-cell res-c">—</span></td>'+
+      '<td class="cjv"><span class="rc-cell res-j">—</span></td>'+
+      '<td class="ct"><span class="rc-cell rc-total res-t">—</span></td>'+
+      '<td class="cdel no-print"><button class="del-btn" onclick="liqRemVerba(\''+v.id+'\')" title="Remover">🗑️</button></td>';
+    tb.appendChild(tr);
+    liqRenderRow(v.id);
+  });
+  document.getElementById('liq-badge-v').textContent=
+    LIQ_VERBAS.length+(LIQ_VERBAS.length===1?' verba':' verbas');
+}
+
+// ── TOGGLES ───────────────────────────────────────────────────────
+
+function liqToggleIRRF(){
+  var ativo=document.getElementById('liq-irrf-ativo').checked;
+  document.getElementById('liq-irrf-body').style.display=ativo?'':'none';
+  liqRecalc();
+}
+
+function liqToggleHon(){
+  var ativo=document.getElementById('liq-hon-ativo').checked;
+  document.getElementById('liq-hon-body').style.display=ativo?'':'none';
+  liqRecalc();
+}
+
+// ── RECALC PRINCIPAL ──────────────────────────────────────────────
+
+function liqRecalc(){
+  // 1. Totais por natureza
+  var totSal=0,totInd=0;
+  LIQ_VERBAS.forEach(function(v){
+    var res=calcVerba(v);
+    if(res.ok){
+      if(v.natureza==='ind') totInd+=res.total;
+      else totSal+=res.total;
+    }
+  });
+  var totBruto=totSal+totInd;
+
+  document.getElementById('liq-tot-sal').textContent  =rr(totSal);
+  document.getElementById('liq-tot-ind').textContent  =rr(totInd);
+  document.getElementById('liq-tot-bruto').textContent=rr(totBruto);
+  document.getElementById('res-sal').textContent  =rr(totSal);
+  document.getElementById('res-ind').textContent  =rr(totInd);
+  document.getElementById('res-bruto').textContent=rr(totBruto);
+
+  // Encargos reclamada (informativo)
+  document.getElementById('enc-inss-pat').textContent  =rr(totSal*0.20);
+  document.getElementById('enc-fgts').textContent      =rr(totSal*0.08);
+  document.getElementById('enc-multa-fgts').textContent=rr(totSal*0.08*0.40);
+  document.getElementById('enc-total').textContent     =rr(totSal*(0.20+0.08+0.032));
+
+  // 2. INSS Empregado
+  var inssTotal=0;
+  var inssAtivo=document.getElementById('liq-inss-ativo').checked;
+  if(inssAtivo&&totSal>0){
+    var nMeses=parseInt(document.getElementById('liq-inss-meses').value)||0;
+    if(nMeses>0){
+      var baseMensal=totSal/nMeses;
+      var inssCalc=calcINSSProgressivo(baseMensal);
+      var inssMensal=inssCalc.total;
+      inssTotal=inssMensal*nMeses;
+
+      document.getElementById('liq-inss-mensal-val').textContent=rr(inssMensal);
+      document.getElementById('liq-inss-total-val').textContent =rr(inssTotal);
+
+      // Detalhamento por faixa
+      var rows='';
+      inssCalc.breakdown.forEach(function(b){
+        rows+='<tr>'+
+          '<td>Até '+rr(b.ate)+'</td>'+
+          '<td class="rc">'+(b.aliq*100).toFixed(1)+'%</td>'+
+          '<td class="rc">'+rr(b.trib)+'</td>'+
+          '<td class="rc">'+rr(b.val)+'</td>'+
+        '</tr>';
+      });
+      if(inssMensal>=INSS_TETO){
+        rows+='<tr class="row-teto"><td colspan="3" style="font-size:11px;color:#d97706">⚠️ Teto atingido — limitado a R$ 951,62/mês</td><td class="rc">'+rr(INSS_TETO)+'</td></tr>';
+      }
+      document.getElementById('liq-inss-rows').innerHTML=rows||
+        '<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:10px">—</td></tr>';
+    } else {
+      document.getElementById('liq-inss-mensal-val').textContent='—';
+      document.getElementById('liq-inss-total-val').textContent ='Informe o nº de meses';
+      document.getElementById('liq-inss-rows').innerHTML=
+        '<tr><td colspan="4" style="text-align:center;padding:14px;color:#94a3b8">Informe o nº de competências para o detalhamento.</td></tr>';
+    }
+  } else {
+    inssTotal=0;
+    document.getElementById('liq-inss-mensal-val').textContent='—';
+    document.getElementById('liq-inss-total-val').textContent ='—';
+    document.getElementById('liq-inss-rows').innerHTML=
+      '<tr><td colspan="4" style="text-align:center;padding:14px;color:#94a3b8">'+(inssAtivo?'Preencha o total salarial e o nº de competências.':'INSS desativado.')+'</td></tr>';
+  }
+  document.getElementById('res-inss').textContent=rr(inssAtivo?inssTotal:0);
+
+  // 3. IRRF Art. 12-A
+  var irrfTotal=0;
+  var irrfAtivo=document.getElementById('liq-irrf-ativo').checked;
+  if(irrfAtivo&&totSal>0){
+    var nMesesI=parseInt(document.getElementById('liq-irrf-meses').value)||0;
+    var dedMensal=parseFloat(document.getElementById('liq-irrf-ded').value)||0;
+    if(nMesesI>0){
+      var baseTrib=Math.max(0,totSal-inssTotal-(dedMensal*nMesesI));
+      var rendaFicta=baseTrib/nMesesI;
+      var irrf=calcIRRFMensal(rendaFicta);
+      irrfTotal=irrf.val*nMesesI;
+      document.getElementById('liq-irrf-base').textContent =rr(baseTrib);
+      document.getElementById('liq-irrf-renda').textContent=rr(rendaFicta);
+      document.getElementById('liq-irrf-aliq').textContent =irrf.txt;
+      document.getElementById('liq-irrf-total').textContent=rr(irrfTotal);
+      document.getElementById('liq-irrf-info').textContent =
+        rr(irrf.val)+'/mês × '+nMesesI+' meses';
+    } else {
+      document.getElementById('liq-irrf-base').textContent ='—';
+      document.getElementById('liq-irrf-renda').textContent='—';
+      document.getElementById('liq-irrf-aliq').textContent ='—';
+      document.getElementById('liq-irrf-total').textContent='Informe o nº de meses';
+      document.getElementById('liq-irrf-info').textContent ='';
+    }
+  } else {
+    document.getElementById('liq-irrf-base').textContent ='—';
+    document.getElementById('liq-irrf-renda').textContent='—';
+    document.getElementById('liq-irrf-aliq').textContent ='—';
+    document.getElementById('liq-irrf-total').textContent='—';
+    document.getElementById('liq-irrf-info').textContent ='';
+  }
+  document.getElementById('res-irrf').textContent=rr(irrfAtivo?irrfTotal:0);
+
+  // 4. Subtotal
+  var subtotal=totBruto-(inssAtivo?inssTotal:0)-(irrfAtivo?irrfTotal:0);
+  document.getElementById('res-subtotal').textContent=rr(subtotal);
+
+  // 5. Honorários
+  var honTotal=0;
+  var honAtivo=document.getElementById('liq-hon-ativo').checked;
+  if(honAtivo){
+    var pct=(parseFloat(document.getElementById('liq-hon-pct').value)||0)/100;
+    var baseHon=document.getElementById('liq-hon-base').value;
+    var baseValHon=baseHon==='bruto'?totBruto
+                  :baseHon==='sal'  ?totSal
+                  :baseHon==='ind'  ?totInd
+                  :subtotal; // 'liq'
+    honTotal=baseValHon*pct;
+    document.getElementById('liq-hon-val').textContent=rr(honTotal);
+  }
+  document.getElementById('res-hon').textContent=rr(honAtivo?honTotal:0);
+
+  // 6. Valor Líquido
+  var valLiq=subtotal-(honAtivo?honTotal:0);
+  document.getElementById('res-liq').textContent=rr(valLiq);
+}
+
+// ── SAVE / LOAD ───────────────────────────────────────────────────
+
+function liqSalvar(){
+  if(!LIQ_VERBAS.length){alert('Adicione ao menos uma verba antes de salvar.');return;}
+  var proc=document.getElementById('liq-proc').value||
+           document.getElementById('liq-recl').value||'Liquidação sem título';
+  var totTxt=document.getElementById('res-liq').textContent;
+  var s=JSON.parse(localStorage.getItem('lawgico_liq')||'[]');
+  s.unshift({
+    id:'lq'+Date.now(),titulo:proc,
+    data:new Date().toLocaleDateString('pt-BR'),
+    totTxt:totTxt,
+    verbas:JSON.parse(JSON.stringify(LIQ_VERBAS)),
+    obs:document.getElementById('liq-obs').value
+  });
+  localStorage.setItem('lawgico_liq',JSON.stringify(s));
+  alert('✅ Liquidação salva com sucesso!');
+  liqRenderSalvos();
+}
+
+function liqRenderSalvos(){
+  var s=JSON.parse(localStorage.getItem('lawgico_liq')||'[]');
+  var el=document.getElementById('liq-salvos-body');
+  if(!s.length){el.innerHTML='<div class="empty-s"><div class="ei">📂</div>Nenhuma liquidação salva.</div>';return;}
+  el.innerHTML='<div class="saved-list">'+s.map(function(c){
+    return '<div class="si" onclick="liqCarregar(\''+c.id+'\')">'+
+      '<div style="flex:1">'+
+        '<div class="si-title">'+(c.titulo||'(sem título)')+'</div>'+
+        '<div class="si-meta">Salvo em '+c.data+'&nbsp;·&nbsp;'+(c.verbas||[]).length+' verbas</div>'+
+      '</div>'+
+      '<div class="si-val">'+c.totTxt+'</div>'+
+      '<button class="si-del no-print" onclick="event.stopPropagation();liqDel(\''+c.id+'\')" title="Excluir">🗑️</button>'+
+    '</div>';
+  }).join('')+'</div>';
+}
+
+function liqCarregar(cid){
+  var s=JSON.parse(localStorage.getItem('lawgico_liq')||'[]');
+  var obj=s.find(function(c){return c.id===cid;});
+  if(!obj) return;
+  document.getElementById('liq-obs').value=obj.obs||'';
+  LIQ_VERBAS=[];LIQ_VCONT=0;
+  (obj.verbas||[]).forEach(function(v){liqAddVerba(v);});
+  liqRenderVerbas();liqRecalc();
+  document.getElementById('liq-salvos-panel').style.display='none';
+  window.scrollTo(0,0);
+}
+
+function liqDel(cid){
+  if(!confirm('Excluir esta liquidação?'))return;
+  var s=JSON.parse(localStorage.getItem('lawgico_liq')||'[]').filter(function(c){return c.id!==cid;});
+  localStorage.setItem('lawgico_liq',JSON.stringify(s));
+  liqRenderSalvos();
+}
+
+function liqToggleSalvos(){
+  var p=document.getElementById('liq-salvos-panel');
+  p.style.display=(p.style.display==='none')?'block':'none';
+  if(p.style.display==='block') liqRenderSalvos();
+}
+
+function liqNovo(){
+  if(!confirm('Iniciar nova liquidação? Os dados não salvos serão perdidos.'))return;
+  LIQ_VERBAS=[];LIQ_VCONT=0;
+  ['liq-proc','liq-recl','liq-reclada','liq-juizo','liq-datasent','liq-datab',
+   'liq-obs','liq-inss-meses','liq-irrf-meses','liq-irrf-ded'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('liq-hon-ativo').checked=false;
+  liqToggleHon();
+  liqRenderVerbas();
+  liqRecalc();
+  liqAddVerba();
+}
+
+// ================================================================
 // INICIALIZAÇÃO
 // ================================================================
 
@@ -1483,9 +2190,11 @@ document.getElementById('data-hoje').textContent=
 
 // Data-base padrão = hoje
 document.getElementById('id-datab').value=today();
+document.getElementById('liq-datab').value=today();
 
 // Adiciona a primeira linha em branco
 addVerba();
+liqAddVerba();
 </script>
 </body>
 </html>
