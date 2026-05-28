@@ -97,6 +97,8 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
 .btn-green:hover{background:#047857;box-shadow:0 4px 14px rgba(5,150,105,.35)}
 .btn-outline{background:transparent;border:2px solid #0A2463;color:#0A2463}
 .btn-outline:hover{background:#0A2463;color:white}
+.btn-excel{background:#217346;color:white}
+.btn-excel:hover{background:#185c37;box-shadow:0 4px 14px rgba(33,115,70,.35)}
 .btn-ghost{background:rgba(100,116,139,.1);color:#475569;border:none}
 .btn-ghost:hover{background:rgba(100,116,139,.18);transform:none}
 .actions-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
@@ -196,6 +198,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
   .logo-sub{display:none}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -341,6 +344,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
     <div class="actions-bar no-print">
       <button class="btn btn-green"    onclick="salvar()">💾 Salvar Cálculo</button>
       <button class="btn btn-cyan"     onclick="window.print()">🖨️ Imprimir / PDF</button>
+      <button class="btn btn-excel"    onclick="exportXLSXInicial()">📊 Excel</button>
       <button class="btn btn-navy"     onclick="novoCalc()">📄 Novo Cálculo</button>
       <button class="btn btn-outline"  onclick="toggleSalvos()">📂 Cálculos Salvos</button>
     </div>
@@ -3167,6 +3171,113 @@ function discNovo(){
 
 // ================================================================
 // INICIALIZAÇÃO
+// ================================================================
+
+// ================================================================
+// EXPORTAÇÃO EXCEL — CÁLCULO INICIAL
+// ================================================================
+
+function exportXLSXInicial(){
+  if(typeof XLSX==='undefined'){alert('Biblioteca Excel ainda carregando. Tente novamente em instantes.');return;}
+  if(!VERBAS.length){alert('Nenhuma verba para exportar.');return;}
+
+  var proc    = document.getElementById('id-proc').value    || '';
+  var recl    = document.getElementById('id-recl').value    || '';
+  var reclada = document.getElementById('id-reclada').value || '';
+  var juizo   = document.getElementById('id-juizo').value   || '';
+  var adv     = document.getElementById('id-adv').value     || '';
+  var ajuiz   = document.getElementById('id-ajuiz').value   || '';
+  var datab   = document.getElementById('id-datab').value   || '';
+  var obs     = document.getElementById('obs').value        || '';
+
+  function fd(d){ return d ? d.split('-').reverse().join('/') : ''; }
+  function fn(n){ return typeof n==='number' ? Math.round(n*100)/100 : 0; }
+
+  var rows = [];
+
+  // Cabeçalho do documento
+  rows.push(['LAWgico Cálculos — Memória de Cálculo Inicial']);
+  rows.push(['']);
+  rows.push(['Processo:',    proc,         '', 'Data-Base:',   fd(datab)]);
+  rows.push(['Reclamante:',  recl,         '', 'Gerado em:',   fd(today())]);
+  rows.push(['Reclamada:',   reclada,      '', '', '']);
+  rows.push(['Juízo/Vara:',  juizo,        '', '', '']);
+  rows.push(['Advogado:',    adv,          '', '', '']);
+  rows.push(['Ajuizamento:', fd(ajuiz),    '', '', '']);
+  rows.push(['']);
+
+  // Cabeçalho da tabela
+  rows.push([
+    '#', 'Verba / Pedido', 'Valor Original (R$)',
+    'Data Início', 'Data-Base', 'Índice de Correção',
+    'Juros 1%/mês', 'Meses', 'Fator de Correção',
+    'Valor Corrigido (R$)', 'Valor Juros (R$)', 'Total Atualizado (R$)'
+  ]);
+
+  var totOrig=0, totCorrFull=0, totJur=0, totAtu=0;
+
+  VERBAS.forEach(function(v, i){
+    var vo  = parseFloat(String(v.valor||'').replace(',','.'))||0;
+    var res = calcVerba(v);
+    var nome = (v.nome==='✏️ Outra (digitar abaixo)') ? (v.nomeCustom||'Outra') : (v.nome||'—');
+    var temJuros = res.ok && v.indice!=='SELIC' && !!v.juros;
+
+    totOrig     += vo;
+    if(res.ok){ totCorrFull += res.corr; totJur += res.juros; totAtu += res.total; }
+
+    rows.push([
+      i+1,
+      nome,
+      fn(vo),
+      fd(v.ini),
+      fd(v.fim || today()),
+      v.indice || 'IPCA-E+SELIC',
+      temJuros ? 'Sim' : 'Não',
+      res.ok ? res.meses : '',
+      res.ok ? fn(res.fator) : '',
+      res.ok ? fn(res.corr)  : '',
+      res.ok ? fn(res.juros) : '',
+      res.ok ? fn(res.total) : ''
+    ]);
+  });
+
+  // Linha de totais
+  rows.push(['']);
+  rows.push([
+    '', 'TOTAIS',
+    fn(totOrig), '', '', '', '', '', '',
+    fn(totCorrFull),
+    fn(totJur),
+    fn(totAtu)
+  ]);
+
+  // Observações
+  if(obs.trim()){
+    rows.push(['']);
+    rows.push(['Observações:']);
+    rows.push([obs]);
+  }
+
+  // Monta planilha
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [
+    {wch:4},  {wch:36}, {wch:20},
+    {wch:13}, {wch:13}, {wch:18},
+    {wch:12}, {wch:7},  {wch:16},
+    {wch:20}, {wch:18}, {wch:22}
+  ];
+
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Cálculo Inicial');
+
+  var fn2 = 'LAWgico_CalcInicial';
+  if(recl)  fn2 += '_' + recl.split(' ')[0];
+  if(datab) fn2 += '_' + datab.replace(/-/g,'');
+  fn2 += '.xlsx';
+
+  XLSX.writeFile(wb, fn2);
+}
+
 // ================================================================
 
 document.getElementById('data-hoje').textContent=
