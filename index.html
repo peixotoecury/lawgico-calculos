@@ -1218,6 +1218,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
     <div class="actions-bar no-print">
       <button class="btn btn-green"   onclick="fgtsSalvar()">💾 Salvar Cálculo</button>
       <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+      <button class="btn btn-excel"   onclick="exportXLSXFGTS()">📊 Excel</button>
       <button class="btn btn-navy"    onclick="fgtsNovo()">📄 Novo Cálculo</button>
       <button class="btn btn-outline" onclick="fgtsToggleSalvos()">📂 Cálculos Salvos</button>
     </div>
@@ -3277,6 +3278,118 @@ function exportXLSXInicial(){
   fn2 += '.xlsx';
 
   XLSX.writeFile(wb, fn2);
+}
+
+// ================================================================
+// EXPORTAÇÃO EXCEL — FGTS
+// ================================================================
+
+function exportXLSXFGTS(){
+  if(typeof XLSX==='undefined'){alert('Biblioteca Excel ainda carregando. Tente novamente.');return;}
+  if(!FGTS_PERIODOS.length){alert('Nenhum período para exportar.');return;}
+
+  var proc     = document.getElementById('fgts-proc').value     || '';
+  var recl     = document.getElementById('fgts-recl').value     || '';
+  var reclada  = document.getElementById('fgts-reclada').value  || '';
+  var juizo    = document.getElementById('fgts-juizo').value    || '';
+  var admissao = document.getElementById('fgts-admissao').value || '';
+  var rescisao = document.getElementById('fgts-rescisao').value || '';
+  var indice   = document.getElementById('fgts-indice').value   || 'IPCA-E+SELIC';
+  var obs      = document.getElementById('fgts-obs').value      || '';
+
+  function fd(d){ return d ? d.split('-').reverse().join('/') : ''; }
+  function fn(n){ return Math.round((n||0)*100)/100; }
+
+  var indiceLabel = {
+    'IPCA-E+SELIC': 'IPCA-E → SELIC (Tema 1191)',
+    'SELIC':        'SELIC integral',
+    'INPC':         'INPC',
+    'TR':           'TR (≈ 0%)'
+  }[indice] || indice;
+
+  // Recalcula todos os períodos
+  var totalFGTS = 0;
+  var periodosDados = FGTS_PERIODOS.map(function(p, i){
+    var sal      = parseFloat(p.sal)||0;
+    var aliq     = parseFloat(p.aliq)||8;
+    var ini      = p.ini||'';
+    var fim      = p.fim||today();
+    var meses    = (ini&&fim) ? monthRange(toYM(ini),toYM(fim)).length : 0;
+    var mensal   = sal * aliq/100;
+    var totalCorr= (mensal&&ini) ? calcFGTSRetroativo(mensal,ini,fim,indice) : 0;
+    totalFGTS   += totalCorr;
+    return {num:i+1, ini:ini, fim:fim, sal:sal, aliq:aliq, meses:meses, mensal:mensal, totalCorr:totalCorr};
+  });
+
+  // Multa
+  var multaAtiva = document.getElementById('fgts-multa-ativo').checked;
+  var saldoConta = parseFloat(document.getElementById('fgts-saldo').value)||0;
+  var baseMulta  = saldoConta + totalFGTS;
+  var multaTotal = multaAtiva ? baseMulta * 0.40 : 0;
+  var totalGeral = totalFGTS + (multaAtiva ? multaTotal : 0);
+
+  // Monta planilha
+  var rows = [];
+
+  rows.push(['LAWgico Cálculos — FGTS: Depósitos Não Recolhidos']);
+  rows.push(['']);
+  rows.push(['Processo:',   proc,     '', 'Índice de Correção:', indiceLabel]);
+  rows.push(['Reclamante:', recl,     '', 'Gerado em:',          fd(today())]);
+  rows.push(['Reclamada:',  reclada,  '', '', '']);
+  rows.push(['Juízo/Vara:', juizo,    '', '', '']);
+  rows.push(['Admissão:',   fd(admissao), '', 'Rescisão / Data-Base:', fd(rescisao)]);
+  rows.push(['']);
+
+  // Tabela de períodos
+  rows.push(['PERÍODOS DE TRABALHO']);
+  rows.push(['#','Data Início','Data Fim','Salário Base (R$)','Alíquota','Meses','FGTS Mensal (R$)','Total Corrigido (R$)']);
+  periodosDados.forEach(function(p){
+    rows.push([
+      p.num,
+      fd(p.ini),
+      fd(p.fim),
+      fn(p.sal),
+      p.aliq+'%',
+      p.meses||'',
+      fn(p.mensal),
+      fn(p.totalCorr)
+    ]);
+  });
+  rows.push(['','','','','','','Total FGTS Corrigido:', fn(totalFGTS)]);
+  rows.push(['']);
+
+  // Multa 40%
+  if(multaAtiva){
+    rows.push(['MULTA RESCISÓRIA — 40%']);
+    rows.push(['Saldo em conta (extrato Caixa)','',fn(saldoConta)]);
+    rows.push(['(+) Total FGTS não recolhido (corrigido)','',fn(totalFGTS)]);
+    rows.push(['= Base de cálculo da multa','',fn(baseMulta)]);
+    rows.push(['Multa FGTS 40%','',fn(multaTotal)]);
+    rows.push(['']);
+  }
+
+  // Resumo final
+  rows.push(['RESUMO']);
+  rows.push(['Total FGTS com correção ('+indiceLabel+')','',fn(totalFGTS)]);
+  if(multaAtiva) rows.push(['Multa rescisória 40%','',fn(multaTotal)]);
+  rows.push(['= TOTAL GERAL','',fn(totalGeral)]);
+
+  if(obs.trim()){
+    rows.push(['']);
+    rows.push(['Observações:']);
+    rows.push([obs]);
+  }
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:42},{wch:13},{wch:13},{wch:18},{wch:10},{wch:7},{wch:20},{wch:22}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'FGTS');
+
+  var fname = 'LAWgico_FGTS';
+  if(recl)     fname += '_'+recl.split(' ')[0];
+  if(rescisao) fname += '_'+rescisao.replace(/-/g,'');
+  fname += '.xlsx';
+  XLSX.writeFile(wb, fname);
 }
 
 // ================================================================
