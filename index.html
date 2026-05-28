@@ -121,6 +121,20 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
 .obs-area{width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:13px;color:#1e293b;font-family:inherit;resize:vertical;min-height:80px;background:#fafbfc;transition:.2s}
 .obs-area:focus{outline:none;border-color:#00B4D8;box-shadow:0 0 0 3px rgba(0,180,216,.1);background:white}
 
+/* === LAUDOS === */
+.laudo-tabs{display:flex;gap:6px;margin-bottom:18px;background:white;padding:6px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.lt-btn{flex:1;background:transparent;border:none;padding:10px 16px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;color:#475569;transition:.2s;text-align:center;letter-spacing:.2px}
+.lt-btn.active{background:#0A2463;color:white;box-shadow:0 2px 10px rgba(10,36,99,.3)}
+.lt-btn:hover:not(.active){background:rgba(10,36,99,.08);color:#0A2463}
+.chk-lbl{display:flex;align-items:center;gap:8px;font-size:13px;color:#334155;padding:8px 12px;background:#f8fafc;border-radius:8px;border:1.5px solid #e2e8f0;cursor:pointer;transition:.15s;user-select:none}
+.chk-lbl:hover{border-color:#00B4D8;background:#f0fbff}
+.chk-lbl input[type=checkbox]{width:16px;height:16px;accent-color:#0A2463;cursor:pointer;flex-shrink:0}
+.result-box{background:#e8f0fe;border-radius:7px;padding:8px 11px;font-size:13px;font-weight:700;color:#0A2463;border:1.5px solid #bfdbfe}
+.quantum-box{padding:14px;border-radius:8px;border:1px solid #bbf7d0;background:#f0fdf4;margin-top:12px}
+.quantum-box .ql{font-size:10.5px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.quantum-box .qv{font-size:22px;font-weight:900;color:#059669}
+.quantum-box .qi{font-size:10px;color:#94a3b8;margin-top:2px}
+
 /* === PRINT === */
 @media print{
   .app-header{position:relative;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -170,7 +184,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
     <button class="tab-btn disabled"  onclick="showComing('discriminacao',this)">🤝 Discriminação de Verbas</button>
     <button class="tab-btn disabled"  onclick="showComing('fgts',this)">🏦 FGTS</button>
     <button class="tab-btn disabled"  onclick="showComing('liquidacao',this)">⚖️ Liquidação de Sentença</button>
-    <button class="tab-btn disabled"  onclick="showComing('laudos',this)">📄 Laudos Periciais</button>
+    <button class="tab-btn"  onclick="showMod('laudos',this)">📄 Laudos Periciais</button>
   </div>
 </header>
 
@@ -311,6 +325,414 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
     </div>
 
   </div><!-- /mod-inicial -->
+
+  <!-- ╔══════════════════════════════════════════╗ -->
+  <!-- ║           LAUDOS PERICIAIS              ║ -->
+  <!-- ╚══════════════════════════════════════════╝ -->
+  <div id="mod-laudos" style="display:none">
+
+    <div class="laudo-tabs no-print">
+      <button class="lt-btn active" onclick="showLaudo('medico',this)">🏥 Laudo Médico</button>
+      <button class="lt-btn"        onclick="showLaudo('tecnico',this)">🔧 Laudo Técnico</button>
+      <button class="lt-btn"        onclick="showLaudo('ergonomico',this)">🪑 Laudo Ergonômico</button>
+    </div>
+
+    <!-- ═════════════════ MÉDICO ═════════════════ -->
+    <div id="laudo-medico">
+
+      <div class="card">
+        <div class="card-header">🏥 Laudo Pericial Médico <span class="card-badge">IDENTIFICAÇÃO</span></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg" style="grid-column:span 2"><label>Número do Processo</label><input type="text" id="lm-proc" class="fc" placeholder="0000000-00.0000.5.00.0000"></div>
+            <div class="fg"><label>Reclamante</label><input type="text" id="lm-recl" class="fc"></div>
+            <div class="fg"><label>Reclamada</label><input type="text" id="lm-reclada" class="fc"></div>
+            <div class="fg"><label>Perito Nomeado</label><input type="text" id="lm-perito" class="fc"></div>
+            <div class="fg"><label>Data do Laudo</label><input type="date" id="lm-data" class="fc"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">👤 Dados do Trabalhador</div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg" style="grid-column:span 2"><label>Nome Completo</label><input type="text" id="lm-nome" class="fc"></div>
+            <div class="fg"><label>Data de Nascimento</label><input type="date" id="lm-nasc" class="fc" onchange="lmCalcIdade()"></div>
+            <div class="fg"><label>Idade (anos)</label><input type="number" id="lm-idade" class="fc" placeholder="0" oninput="lmRecalc()"></div>
+            <div class="fg"><label>Profissão / Função</label><input type="text" id="lm-prof" class="fc"></div>
+            <div class="fg"><label>Salário Mensal (R$)</label><input type="number" step="0.01" id="lm-sal" class="fc" placeholder="0,00" oninput="lmRecalc()"></div>
+            <div class="fg"><label>Data de Admissão</label><input type="date" id="lm-admissao" class="fc"></div>
+            <div class="fg"><label>Data Afastamento / Demissão</label><input type="date" id="lm-afast" class="fc"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">🩺 Diagnóstico e Nexo Causal</div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg"><label>CID-10</label><input type="text" id="lm-cid" class="fc" placeholder="Ex.: M54.5"></div>
+            <div class="fg" style="grid-column:span 3"><label>Diagnóstico / Patologia</label><input type="text" id="lm-diag" class="fc" placeholder="Descrição da doença ou lesão identificada pelo perito"></div>
+            <div class="fg">
+              <label>Nexo Causal com o Trabalho</label>
+              <select id="lm-nexo" class="fc" onchange="lmNexoChange()">
+                <option value="sim">Sim — nexo direto</option>
+                <option value="parcial">Parcial — concausa</option>
+                <option value="nao">Não</option>
+              </select>
+            </div>
+            <div class="fg" id="lm-concausa-wrap" style="display:none">
+              <label>% Contribuição do Trabalho</label>
+              <input type="number" id="lm-concausa" class="fc" placeholder="Ex.: 50" min="1" max="100" oninput="lmRecalc()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">⚠️ Incapacidade Laboral</div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg" style="grid-column:span 2">
+              <label>Tipo de Incapacidade</label>
+              <select id="lm-incap" class="fc" onchange="lmIncapChange()">
+                <option value="nenhuma">Nenhuma</option>
+                <option value="parcial-temp">Parcial Temporária</option>
+                <option value="parcial-perm">Parcial Permanente</option>
+                <option value="total-temp">Total Temporária</option>
+                <option value="total-perm">Total Permanente</option>
+              </select>
+            </div>
+            <div class="fg" id="lm-pct-wrap" style="display:none">
+              <label>% de Redução Laboral</label>
+              <input type="number" id="lm-pct" class="fc" placeholder="Ex.: 30" min="1" max="100" oninput="lmRecalc()">
+            </div>
+            <div class="fg" id="lm-expvida-wrap" style="display:none">
+              <label>Expectativa de Vida (IBGE, anos)</label>
+              <input type="number" id="lm-expvida" class="fc" value="76" oninput="lmRecalc()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">💰 Quantum Debeatur — Danos Pleiteados</div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg"><label>Dano Moral (R$)</label><input type="number" step="0.01" id="lm-moral" class="fc" placeholder="0,00" oninput="lmRecalc()"></div>
+            <div class="fg"><label>Dano Estético (R$)</label><input type="number" step="0.01" id="lm-estetico" class="fc" placeholder="0,00" oninput="lmRecalc()"></div>
+            <div class="fg"><label>Gastos com Tratamento (R$)</label><input type="number" step="0.01" id="lm-tratamento" class="fc" placeholder="0,00" oninput="lmRecalc()"></div>
+            <div class="fg"><label>Outros Danos (R$)</label><input type="number" step="0.01" id="lm-outros" class="fc" placeholder="0,00" oninput="lmRecalc()"></div>
+          </div>
+
+          <div id="lm-pensao-section" style="display:none;margin-top:18px">
+            <div style="background:#f1f5f9;border-radius:10px;padding:16px">
+              <div style="font-weight:800;color:#0A2463;margin-bottom:14px;font-size:13px;text-transform:uppercase;letter-spacing:.4px">⚖️ Cálculo de Pensão Mensal</div>
+              <div class="form-grid" style="margin-bottom:14px">
+                <div class="fg">
+                  <label>Data Início da Pensão</label>
+                  <input type="date" id="lm-pensao-ini" class="fc" onchange="lmRecalc()">
+                </div>
+                <div class="fg">
+                  <label>Pensão Mensal Calculada</label>
+                  <div class="result-box" id="lm-pensao-mensal">—</div>
+                </div>
+                <div class="fg">
+                  <label>Anos Restantes de Vida</label>
+                  <div class="result-box" id="lm-anos-rest">—</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div class="quantum-box">
+                  <div class="ql">Pensão Retroativa (corrigida)</div>
+                  <div class="qv" id="lm-ret-val">—</div>
+                  <div class="qi" id="lm-ret-info">Informe data de início</div>
+                </div>
+                <div class="quantum-box" id="lm-cap-box" style="display:none">
+                  <div class="ql">Pensão Capitalizada (até expectativa de vida)</div>
+                  <div class="qv" id="lm-cap-val">—</div>
+                  <div class="qi" id="lm-cap-info"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px">
+            <div class="fg"><label>Observações / Conclusões Periciais</label></div>
+            <textarea class="obs-area" id="lm-obs" style="margin-top:4px" placeholder="Resumo das conclusões, ressalvas do perito, recomendações de tratamento..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="totals-panel">
+        <div class="ti"><div class="ti-label">Dano Moral</div><div class="ti-val accent" id="lm-tot-moral">R$ 0,00</div></div>
+        <div class="ti"><div class="ti-label">Dano Estético</div><div class="ti-val accent" id="lm-tot-est">R$ 0,00</div></div>
+        <div class="ti"><div class="ti-label">Tratamento / Material</div><div class="ti-val accent" id="lm-tot-mat">R$ 0,00</div></div>
+        <div class="ti"><div class="ti-label">Pensão (retro + capitalizada)</div><div class="ti-val accent" id="lm-tot-pensao">R$ 0,00</div></div>
+        <div class="ti"><div class="ti-label">⭐ TOTAL GERAL</div><div class="ti-val green" id="lm-tot-geral">R$ 0,00</div></div>
+      </div>
+
+      <div class="actions-bar no-print">
+        <button class="btn btn-green"   onclick="lmSalvar()">💾 Salvar Laudo</button>
+        <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+        <button class="btn btn-navy"    onclick="lmNovo()">📄 Novo</button>
+        <button class="btn btn-outline" onclick="lmToggleSalvos()">📂 Laudos Salvos</button>
+      </div>
+      <div id="lm-salvos-panel" style="display:none">
+        <div class="card"><div class="card-header">📂 Laudos Médicos Salvos</div><div class="card-body" id="lm-salvos-body"><div class="empty-s"><div class="ei">📂</div>Nenhum laudo salvo.</div></div></div>
+      </div>
+
+    </div><!-- /laudo-medico -->
+
+    <!-- ═════════════════ TÉCNICO ═════════════════ -->
+    <div id="laudo-tecnico" style="display:none">
+
+      <div class="card">
+        <div class="card-header">🔧 Laudo Pericial Técnico <span class="card-badge">IDENTIFICAÇÃO</span></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg" style="grid-column:span 2"><label>Número do Processo</label><input type="text" id="lt-proc" class="fc" placeholder="0000000-00.0000.5.00.0000"></div>
+            <div class="fg"><label>Reclamante</label><input type="text" id="lt-recl" class="fc"></div>
+            <div class="fg"><label>Reclamada</label><input type="text" id="lt-reclada" class="fc"></div>
+            <div class="fg"><label>Perito</label><input type="text" id="lt-perito" class="fc"></div>
+            <div class="fg"><label>Data do Laudo</label><input type="date" id="lt-data" class="fc"></div>
+            <div class="fg"><label>Local Inspecionado</label><input type="text" id="lt-local" class="fc" placeholder="Endereço / setor da empresa"></div>
+            <div class="fg"><label>Função / Cargo</label><input type="text" id="lt-func" class="fc"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">☢️ Adicional de Insalubridade</div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Verificado pelo Perito?</label>
+              <select id="lt-ins-sim" class="fc" onchange="ltInsChange()">
+                <option value="nao">Não</option>
+                <option value="sim">Sim</option>
+              </select>
+            </div>
+          </div>
+          <div id="lt-ins-body" style="display:none;margin-top:14px">
+            <div class="form-grid">
+              <div class="fg" style="grid-column:span 2"><label>Agente Nocivo Identificado</label><input type="text" id="lt-ins-agente" class="fc" placeholder="Ex.: ruído, calor, produtos químicos, poeiras"></div>
+              <div class="fg">
+                <label>Grau de Insalubridade</label>
+                <select id="lt-ins-grau" class="fc" onchange="ltRecalc()">
+                  <option value="10">Mínimo — 10%</option>
+                  <option value="20" selected>Médio — 20%</option>
+                  <option value="40">Máximo — 40%</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label>Base de Cálculo</label>
+                <select id="lt-ins-base" class="fc" onchange="ltBaseChange()">
+                  <option value="sm">Salário Mínimo (R$ 1.518,00)</option>
+                  <option value="contratual">Salário Contratual</option>
+                </select>
+              </div>
+              <div class="fg" id="lt-ins-sal-wrap" style="display:none"><label>Salário Contratual (R$)</label><input type="number" step="0.01" id="lt-ins-sal" class="fc" placeholder="0,00" oninput="ltRecalc()"></div>
+              <div class="fg"><label>Data Início</label><input type="date" id="lt-ins-ini" class="fc" onchange="ltRecalc()"></div>
+              <div class="fg"><label>Data Fim</label><input type="date" id="lt-ins-fim" class="fc" onchange="ltRecalc()"></div>
+              <div class="fg"><label>Mensal Calculado</label><div class="result-box" id="lt-ins-mensal">—</div></div>
+              <div class="fg"><label>Meses do Período</label><div class="result-box" id="lt-ins-meses">—</div></div>
+            </div>
+            <div class="quantum-box">
+              <div class="ql">Retroativo Insalubridade (c/ correção IPCA-E → SELIC — Tema 1191)</div>
+              <div class="qv" id="lt-ins-retroativo">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">⚡ Adicional de Periculosidade</div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Verificado pelo Perito?</label>
+              <select id="lt-per-sim" class="fc" onchange="ltPerChange()">
+                <option value="nao">Não</option>
+                <option value="sim">Sim</option>
+              </select>
+            </div>
+          </div>
+          <div id="lt-per-body" style="display:none;margin-top:14px">
+            <div class="form-grid">
+              <div class="fg" style="grid-column:span 2"><label>Atividade / Risco Perigoso</label><input type="text" id="lt-per-ativ" class="fc" placeholder="Ex.: inflamáveis, energia elétrica, explosivos, radiações"></div>
+              <div class="fg"><label>Salário Base (R$)</label><input type="number" step="0.01" id="lt-per-sal" class="fc" placeholder="0,00" oninput="ltRecalc()"></div>
+              <div class="fg">
+                <label>Percentual</label>
+                <select id="lt-per-pct" class="fc" onchange="ltRecalc()"><option value="30">30% (CLT art. 193)</option></select>
+              </div>
+              <div class="fg"><label>Data Início</label><input type="date" id="lt-per-ini" class="fc" onchange="ltRecalc()"></div>
+              <div class="fg"><label>Data Fim</label><input type="date" id="lt-per-fim" class="fc" onchange="ltRecalc()"></div>
+              <div class="fg"><label>Mensal Calculado</label><div class="result-box" id="lt-per-mensal">—</div></div>
+              <div class="fg"><label>Meses do Período</label><div class="result-box" id="lt-per-meses">—</div></div>
+            </div>
+            <div class="quantum-box">
+              <div class="ql">Retroativo Periculosidade (c/ correção IPCA-E → SELIC — Tema 1191)</div>
+              <div class="qv" id="lt-per-retroativo">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">📝 Observações / NRs Aplicáveis</div>
+        <div class="card-body"><textarea class="obs-area" id="lt-obs" placeholder="NRs violadas, NR-15, NR-16, conclusões do perito, ressalvas..."></textarea></div>
+      </div>
+
+      <div class="totals-panel">
+        <div class="ti"><div class="ti-label">Retroativo Insalubridade</div><div class="ti-val accent" id="lt-tot-ins">R$ 0,00</div></div>
+        <div class="ti"><div class="ti-label">Retroativo Periculosidade</div><div class="ti-val accent" id="lt-tot-per">R$ 0,00</div></div>
+        <div class="ti"><div class="ti-label">⭐ TOTAL</div><div class="ti-val green" id="lt-tot-geral">R$ 0,00</div></div>
+      </div>
+
+      <div class="actions-bar no-print">
+        <button class="btn btn-green"   onclick="ltSalvar()">💾 Salvar Laudo</button>
+        <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+        <button class="btn btn-navy"    onclick="ltNovo()">📄 Novo</button>
+        <button class="btn btn-outline" onclick="ltToggleSalvos()">📂 Laudos Salvos</button>
+      </div>
+      <div id="lt-salvos-panel" style="display:none">
+        <div class="card"><div class="card-header">📂 Laudos Técnicos Salvos</div><div class="card-body" id="lt-salvos-body"><div class="empty-s"><div class="ei">📂</div>Nenhum laudo salvo.</div></div></div>
+      </div>
+
+    </div><!-- /laudo-tecnico -->
+
+    <!-- ═══════════════ ERGONÔMICO ════════════════ -->
+    <div id="laudo-ergonomico" style="display:none">
+
+      <div class="card">
+        <div class="card-header">🪑 Laudo Pericial Ergonômico <span class="card-badge">IDENTIFICAÇÃO</span></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg" style="grid-column:span 2"><label>Número do Processo</label><input type="text" id="le-proc" class="fc" placeholder="0000000-00.0000.5.00.0000"></div>
+            <div class="fg"><label>Reclamante</label><input type="text" id="le-recl" class="fc"></div>
+            <div class="fg"><label>Reclamada</label><input type="text" id="le-reclada" class="fc"></div>
+            <div class="fg"><label>Perito</label><input type="text" id="le-perito" class="fc"></div>
+            <div class="fg"><label>Data do Laudo</label><input type="date" id="le-data" class="fc"></div>
+            <div class="fg" style="grid-column:span 2"><label>Posto de Trabalho / Função Exercida</label><input type="text" id="le-posto" class="fc" placeholder="Ex.: operador de caixa, digitador, auxiliar de produção"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">🔍 Fatores Ergonômicos Identificados (NR-17)</div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-bottom:16px">
+            <label class="chk-lbl"><input type="checkbox" id="le-f1"> Postura inadequada / forçada</label>
+            <label class="chk-lbl"><input type="checkbox" id="le-f2"> Movimentos repetitivos</label>
+            <label class="chk-lbl"><input type="checkbox" id="le-f3"> Esforço físico excessivo</label>
+            <label class="chk-lbl"><input type="checkbox" id="le-f4"> Vibração (corpo inteiro ou segmentar)</label>
+            <label class="chk-lbl"><input type="checkbox" id="le-f5"> Temperatura extrema</label>
+            <label class="chk-lbl"><input type="checkbox" id="le-f6"> Iluminação inadequada</label>
+            <label class="chk-lbl"><input type="checkbox" id="le-f7"> Ruído acima do limite (NR-15)</label>
+            <label class="chk-lbl"><input type="checkbox" id="le-f8"> Sobrecarga mental / estresse</label>
+            <label class="chk-lbl"><input type="checkbox" id="le-f9"> Mobiliário / equipamentos inadequados</label>
+            <label class="chk-lbl"><input type="checkbox" id="le-f10"> Trabalho noturno / turnos exaustivos</label>
+          </div>
+          <div class="form-grid">
+            <div class="fg">
+              <label>NR-17 Conforme?</label>
+              <select id="le-nr17" class="fc">
+                <option value="nao">Não conforme</option>
+                <option value="parcial">Parcialmente conforme</option>
+                <option value="sim">Conforme</option>
+              </select>
+            </div>
+            <div class="fg"><label>CID-10 da Doença Ocupacional</label><input type="text" id="le-cid" class="fc" placeholder="Ex.: M75.1, G56.0"></div>
+            <div class="fg" style="grid-column:span 2"><label>Diagnóstico</label><input type="text" id="le-diag" class="fc" placeholder="Doença ou lesão identificada como de origem ocupacional"></div>
+            <div class="fg">
+              <label>Nexo Causal com o Trabalho</label>
+              <select id="le-nexo" class="fc">
+                <option value="sim">Sim — nexo direto</option>
+                <option value="parcial">Parcial — concausa</option>
+                <option value="nao">Não</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">💰 Insalubridade / Quantum Debeatur</div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Há Adicional de Insalubridade?</label>
+              <select id="le-ins-sim" class="fc" onchange="leInsChange()">
+                <option value="nao">Não</option>
+                <option value="sim">Sim</option>
+              </select>
+            </div>
+          </div>
+          <div id="le-ins-body" style="display:none;margin-top:14px">
+            <div class="form-grid">
+              <div class="fg">
+                <label>Grau</label>
+                <select id="le-ins-grau" class="fc" onchange="leRecalc()">
+                  <option value="10">Mínimo — 10%</option>
+                  <option value="20" selected>Médio — 20%</option>
+                  <option value="40">Máximo — 40%</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label>Base de Cálculo</label>
+                <select id="le-ins-base" class="fc" onchange="leBaseChange()">
+                  <option value="sm">Salário Mínimo (R$ 1.518,00)</option>
+                  <option value="contratual">Salário Contratual</option>
+                </select>
+              </div>
+              <div class="fg" id="le-ins-sal-wrap" style="display:none"><label>Salário (R$)</label><input type="number" step="0.01" id="le-ins-sal" class="fc" placeholder="0,00" oninput="leRecalc()"></div>
+              <div class="fg"><label>Data Início</label><input type="date" id="le-ins-ini" class="fc" onchange="leRecalc()"></div>
+              <div class="fg"><label>Data Fim</label><input type="date" id="le-ins-fim" class="fc" onchange="leRecalc()"></div>
+              <div class="fg"><label>Mensal Calculado</label><div class="result-box" id="le-ins-mensal">—</div></div>
+              <div class="fg"><label>Meses do Período</label><div class="result-box" id="le-ins-meses">—</div></div>
+            </div>
+            <div class="quantum-box">
+              <div class="ql">Retroativo Insalubridade (c/ correção IPCA-E → SELIC)</div>
+              <div class="qv" id="le-ins-retroativo">—</div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px">
+            <div class="form-grid">
+              <div class="fg"><label>Dano Moral / Existencial (R$)</label><input type="number" step="0.01" id="le-moral" class="fc" placeholder="0,00" oninput="leRecalc()"></div>
+              <div class="fg"><label>Outros (indenizações, R$)</label><input type="number" step="0.01" id="le-outros" class="fc" placeholder="0,00" oninput="leRecalc()"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">📝 Observações / Recomendações</div>
+        <div class="card-body"><textarea class="obs-area" id="le-obs" placeholder="Conclusões periciais, NRs violadas, recomendações ergonômicas, adaptações sugeridas..."></textarea></div>
+      </div>
+
+      <div class="totals-panel">
+        <div class="ti"><div class="ti-label">Insalubridade Retroativa</div><div class="ti-val accent" id="le-tot-ins">R$ 0,00</div></div>
+        <div class="ti"><div class="ti-label">Dano Moral</div><div class="ti-val accent" id="le-tot-moral">R$ 0,00</div></div>
+        <div class="ti"><div class="ti-label">Outros</div><div class="ti-val accent" id="le-tot-out">R$ 0,00</div></div>
+        <div class="ti"><div class="ti-label">⭐ TOTAL</div><div class="ti-val green" id="le-tot-geral">R$ 0,00</div></div>
+      </div>
+
+      <div class="actions-bar no-print">
+        <button class="btn btn-green"   onclick="leSalvar()">💾 Salvar Laudo</button>
+        <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+        <button class="btn btn-navy"    onclick="leNovo()">📄 Novo</button>
+        <button class="btn btn-outline" onclick="leToggleSalvos()">📂 Laudos Salvos</button>
+      </div>
+      <div id="le-salvos-panel" style="display:none">
+        <div class="card"><div class="card-header">📂 Laudos Ergonômicos Salvos</div><div class="card-body" id="le-salvos-body"><div class="empty-s"><div class="ei">📂</div>Nenhum laudo salvo.</div></div></div>
+      </div>
+
+    </div><!-- /laudo-ergonomico -->
+
+  </div><!-- /mod-laudos -->
 
   <!-- ╔══════════════════════════════════════════╗ -->
   <!-- ║           EM DESENVOLVIMENTO            ║ -->
@@ -776,7 +1198,8 @@ function novoCalc(){
 
 function showMod(mod,btn){
   document.getElementById('mod-inicial').style.display=(mod==='inicial')?'':'none';
-  document.getElementById('mod-coming').style.display=(mod!=='inicial')?'':'none';
+  document.getElementById('mod-laudos').style.display=(mod==='laudos')?'':'none';
+  document.getElementById('mod-coming').style.display=(mod!=='inicial'&&mod!=='laudos')?'':'none';
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   if(btn) btn.classList.add('active');
 }
@@ -792,6 +1215,264 @@ function showComing(nome,btn){
   document.getElementById('coming-title').textContent=COMING_NAMES[nome]||'Em desenvolvimento';
   showMod('coming',btn);
 }
+
+// ================================================================
+// LAUDOS PERICIAIS
+// ================================================================
+
+var SM_ATUAL = 1518.00; // Salário mínimo 2025
+
+function showLaudo(tipo,btn){
+  ['medico','tecnico','ergonomico'].forEach(function(t){
+    document.getElementById('laudo-'+t).style.display=(t===tipo)?'':'none';
+  });
+  document.querySelectorAll('.lt-btn').forEach(function(b){b.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+}
+
+// Cálculo retroativo mês a mês (corrige cada competência pela variação até hoje)
+function calcRetroativo(mensal,ini,fim){
+  if(!mensal||!ini) return 0;
+  var ms=monthRange(toYM(ini),toYM(fim||today()));
+  var total=0;
+  ms.forEach(function(ym){
+    total+=mensal*fatorMisto(ym,today());
+  });
+  return total;
+}
+
+// ── MÉDICO ──────────────────────────────────────────────────────
+
+function lmCalcIdade(){
+  var nasc=document.getElementById('lm-nasc').value;
+  if(!nasc) return;
+  var d=new Date(nasc),h=new Date();
+  var idade=h.getFullYear()-d.getFullYear();
+  var m=h.getMonth()-d.getMonth();
+  if(m<0||(m===0&&h.getDate()<d.getDate())) idade--;
+  document.getElementById('lm-idade').value=idade;
+  lmRecalc();
+}
+
+function lmNexoChange(){
+  var nexo=document.getElementById('lm-nexo').value;
+  document.getElementById('lm-concausa-wrap').style.display=(nexo==='parcial')?'':'none';
+  lmRecalc();
+}
+
+function lmIncapChange(){
+  var tipo=document.getElementById('lm-incap').value;
+  var perm=(tipo==='parcial-perm'||tipo==='total-perm');
+  var hasPct=(tipo==='parcial-temp'||tipo==='parcial-perm');
+  document.getElementById('lm-pct-wrap').style.display=hasPct?'':'none';
+  document.getElementById('lm-expvida-wrap').style.display=perm?'':'none';
+  document.getElementById('lm-cap-box').style.display=perm?'':'none';
+  document.getElementById('lm-pensao-section').style.display=(tipo!=='nenhuma')?'':'none';
+  if(tipo==='total-temp'||tipo==='total-perm') document.getElementById('lm-pct').value=100;
+  lmRecalc();
+}
+
+function lmRecalc(){
+  var moral=parseFloat(document.getElementById('lm-moral').value)||0;
+  var estetico=parseFloat(document.getElementById('lm-estetico').value)||0;
+  var tratamento=parseFloat(document.getElementById('lm-tratamento').value)||0;
+  var outros=parseFloat(document.getElementById('lm-outros').value)||0;
+  var salario=parseFloat(document.getElementById('lm-sal').value)||0;
+  var idade=parseFloat(document.getElementById('lm-idade').value)||0;
+  var expVida=parseFloat(document.getElementById('lm-expvida').value)||76;
+  var pct=parseFloat(document.getElementById('lm-pct').value)||100;
+  var tipo=document.getElementById('lm-incap').value;
+  var nexo=document.getElementById('lm-nexo').value;
+  var concausa=parseFloat(document.getElementById('lm-concausa').value)||100;
+  var fNexo=(nexo==='parcial')?(concausa/100):(nexo==='sim'?1:0);
+
+  var pensaoRetro=0,pensaoCap=0;
+
+  if(tipo!=='nenhuma'&&salario>0){
+    var pensaoMensal=salario*(pct/100)*fNexo;
+    document.getElementById('lm-pensao-mensal').textContent=rr(pensaoMensal);
+
+    var pensaoIni=document.getElementById('lm-pensao-ini').value;
+    if(pensaoIni){
+      pensaoRetro=calcRetroativo(pensaoMensal,pensaoIni,today());
+      document.getElementById('lm-ret-val').textContent=rr(pensaoRetro);
+      var ms=monthRange(toYM(pensaoIni),toYM(today()));
+      document.getElementById('lm-ret-info').textContent='De '+pensaoIni+' até hoje ('+ms.length+' meses)';
+    } else {
+      document.getElementById('lm-ret-val').textContent='—';
+      document.getElementById('lm-ret-info').textContent='Informe a data de início';
+    }
+
+    if(tipo==='parcial-perm'||tipo==='total-perm'){
+      var anosRest=Math.max(0,expVida-idade);
+      document.getElementById('lm-anos-rest').textContent=anosRest.toFixed(1)+' anos';
+      pensaoCap=pensaoMensal*12*anosRest;
+      document.getElementById('lm-cap-val').textContent=rr(pensaoCap);
+      document.getElementById('lm-cap-info').textContent='Salário × '+pct+'% × 12 meses × '+anosRest.toFixed(1)+' anos';
+    } else {
+      document.getElementById('lm-anos-rest').textContent='—';
+    }
+  }
+
+  var totPensao=pensaoRetro+pensaoCap;
+  var totGeral=moral+estetico+tratamento+outros+totPensao;
+
+  document.getElementById('lm-tot-moral').textContent=rr(moral);
+  document.getElementById('lm-tot-est').textContent=rr(estetico);
+  document.getElementById('lm-tot-mat').textContent=rr(tratamento+outros);
+  document.getElementById('lm-tot-pensao').textContent=rr(totPensao);
+  document.getElementById('lm-tot-geral').textContent=rr(totGeral);
+}
+
+function lmSalvar(){
+  var proc=document.getElementById('lm-proc').value||document.getElementById('lm-recl').value||'Laudo Médico';
+  var totTxt=document.getElementById('lm-tot-geral').textContent;
+  var s=JSON.parse(localStorage.getItem('lawgico_laud_med')||'[]');
+  s.unshift({id:'lm'+Date.now(),titulo:proc,data:new Date().toLocaleDateString('pt-BR'),totTxt:totTxt});
+  localStorage.setItem('lawgico_laud_med',JSON.stringify(s));
+  alert('✅ Laudo médico salvo!'); lmRenderSalvos();
+}
+
+function lmRenderSalvos(){
+  var s=JSON.parse(localStorage.getItem('lawgico_laud_med')||'[]');
+  var el=document.getElementById('lm-salvos-body');
+  if(!s.length){el.innerHTML='<div class="empty-s"><div class="ei">📂</div>Nenhum laudo salvo.</div>';return;}
+  el.innerHTML='<div class="saved-list">'+s.map(function(c){
+    return '<div class="si"><div style="flex:1"><div class="si-title">'+c.titulo+'</div><div class="si-meta">'+c.data+'</div></div><div class="si-val">'+c.totTxt+'</div><button class="si-del no-print" onclick="event.stopPropagation();lmDel(\''+c.id+'\')" title="Excluir">🗑️</button></div>';
+  }).join('')+'</div>';
+}
+
+function lmDel(cid){if(!confirm('Excluir?')) return; var s=JSON.parse(localStorage.getItem('lawgico_laud_med')||'[]').filter(function(c){return c.id!==cid;}); localStorage.setItem('lawgico_laud_med',JSON.stringify(s)); lmRenderSalvos();}
+function lmToggleSalvos(){var p=document.getElementById('lm-salvos-panel');p.style.display=(p.style.display==='none')?'block':'none';if(p.style.display==='block') lmRenderSalvos();}
+function lmNovo(){if(!confirm('Iniciar novo laudo médico?'))return;['lm-proc','lm-recl','lm-reclada','lm-perito','lm-nome','lm-prof','lm-cid','lm-diag','lm-obs','lm-moral','lm-estetico','lm-tratamento','lm-outros','lm-sal','lm-idade'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('lm-incap').value='nenhuma';lmIncapChange();}
+
+// ── TÉCNICO ─────────────────────────────────────────────────────
+
+function ltInsChange(){
+  document.getElementById('lt-ins-body').style.display=(document.getElementById('lt-ins-sim').value==='sim')?'':'none';
+  ltRecalc();
+}
+function ltPerChange(){
+  document.getElementById('lt-per-body').style.display=(document.getElementById('lt-per-sim').value==='sim')?'':'none';
+  ltRecalc();
+}
+function ltBaseChange(){
+  document.getElementById('lt-ins-sal-wrap').style.display=(document.getElementById('lt-ins-base').value==='contratual')?'':'none';
+  ltRecalc();
+}
+
+function ltRecalc(){
+  var totIns=0,totPer=0;
+
+  if(document.getElementById('lt-ins-sim').value==='sim'){
+    var grau=parseFloat(document.getElementById('lt-ins-grau').value)||20;
+    var base=document.getElementById('lt-ins-base').value;
+    var baseVal=(base==='sm')?SM_ATUAL:(parseFloat(document.getElementById('lt-ins-sal').value)||0);
+    var mensal=baseVal*grau/100;
+    var ini=document.getElementById('lt-ins-ini').value;
+    var fim=document.getElementById('lt-ins-fim').value;
+    var meses=(ini&&fim)?monthRange(toYM(ini),toYM(fim)).length:0;
+    document.getElementById('lt-ins-mensal').textContent=mensal?rr(mensal):'—';
+    document.getElementById('lt-ins-meses').textContent=meses||'—';
+    if(mensal&&ini){ totIns=calcRetroativo(mensal,ini,fim); document.getElementById('lt-ins-retroativo').textContent=rr(totIns); }
+    else document.getElementById('lt-ins-retroativo').textContent='—';
+  }
+
+  if(document.getElementById('lt-per-sim').value==='sim'){
+    var sal=parseFloat(document.getElementById('lt-per-sal').value)||0;
+    var pct=parseFloat(document.getElementById('lt-per-pct').value)||30;
+    var mensalP=sal*pct/100;
+    var iniP=document.getElementById('lt-per-ini').value;
+    var fimP=document.getElementById('lt-per-fim').value;
+    var mesesP=(iniP&&fimP)?monthRange(toYM(iniP),toYM(fimP)).length:0;
+    document.getElementById('lt-per-mensal').textContent=mensalP?rr(mensalP):'—';
+    document.getElementById('lt-per-meses').textContent=mesesP||'—';
+    if(mensalP&&iniP){ totPer=calcRetroativo(mensalP,iniP,fimP); document.getElementById('lt-per-retroativo').textContent=rr(totPer); }
+    else document.getElementById('lt-per-retroativo').textContent='—';
+  }
+
+  document.getElementById('lt-tot-ins').textContent=rr(totIns);
+  document.getElementById('lt-tot-per').textContent=rr(totPer);
+  document.getElementById('lt-tot-geral').textContent=rr(totIns+totPer);
+}
+
+function ltSalvar(){
+  var proc=document.getElementById('lt-proc').value||'Laudo Técnico';
+  var totTxt=document.getElementById('lt-tot-geral').textContent;
+  var s=JSON.parse(localStorage.getItem('lawgico_laud_tec')||'[]');
+  s.unshift({id:'lt'+Date.now(),titulo:proc,data:new Date().toLocaleDateString('pt-BR'),totTxt:totTxt});
+  localStorage.setItem('lawgico_laud_tec',JSON.stringify(s));
+  alert('✅ Laudo técnico salvo!'); ltRenderSalvos();
+}
+
+function ltRenderSalvos(){
+  var s=JSON.parse(localStorage.getItem('lawgico_laud_tec')||'[]');
+  var el=document.getElementById('lt-salvos-body');
+  if(!s.length){el.innerHTML='<div class="empty-s"><div class="ei">📂</div>Nenhum laudo salvo.</div>';return;}
+  el.innerHTML='<div class="saved-list">'+s.map(function(c){
+    return '<div class="si"><div style="flex:1"><div class="si-title">'+c.titulo+'</div><div class="si-meta">'+c.data+'</div></div><div class="si-val">'+c.totTxt+'</div><button class="si-del no-print" onclick="event.stopPropagation();ltDel(\''+c.id+'\')" title="Excluir">🗑️</button></div>';
+  }).join('')+'</div>';
+}
+
+function ltDel(cid){if(!confirm('Excluir?'))return; var s=JSON.parse(localStorage.getItem('lawgico_laud_tec')||'[]').filter(function(c){return c.id!==cid;}); localStorage.setItem('lawgico_laud_tec',JSON.stringify(s)); ltRenderSalvos();}
+function ltToggleSalvos(){var p=document.getElementById('lt-salvos-panel');p.style.display=(p.style.display==='none')?'block':'none';if(p.style.display==='block') ltRenderSalvos();}
+function ltNovo(){if(!confirm('Novo laudo técnico?'))return;['lt-proc','lt-recl','lt-reclada','lt-perito','lt-local','lt-func','lt-ins-agente','lt-per-ativ','lt-obs'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('lt-ins-sim').value='nao';ltInsChange();document.getElementById('lt-per-sim').value='nao';ltPerChange();}
+
+// ── ERGONÔMICO ───────────────────────────────────────────────────
+
+function leInsChange(){
+  document.getElementById('le-ins-body').style.display=(document.getElementById('le-ins-sim').value==='sim')?'':'none';
+  leRecalc();
+}
+function leBaseChange(){
+  document.getElementById('le-ins-sal-wrap').style.display=(document.getElementById('le-ins-base').value==='contratual')?'':'none';
+  leRecalc();
+}
+
+function leRecalc(){
+  var totIns=0;
+  if(document.getElementById('le-ins-sim').value==='sim'){
+    var grau=parseFloat(document.getElementById('le-ins-grau').value)||20;
+    var base=document.getElementById('le-ins-base').value;
+    var baseVal=(base==='sm')?SM_ATUAL:(parseFloat(document.getElementById('le-ins-sal').value)||0);
+    var mensal=baseVal*grau/100;
+    var ini=document.getElementById('le-ins-ini').value;
+    var fim=document.getElementById('le-ins-fim').value;
+    var meses=(ini&&fim)?monthRange(toYM(ini),toYM(fim)).length:0;
+    document.getElementById('le-ins-mensal').textContent=mensal?rr(mensal):'—';
+    document.getElementById('le-ins-meses').textContent=meses||'—';
+    if(mensal&&ini){ totIns=calcRetroativo(mensal,ini,fim); document.getElementById('le-ins-retroativo').textContent=rr(totIns); }
+    else document.getElementById('le-ins-retroativo').textContent='—';
+  }
+  var moral=parseFloat(document.getElementById('le-moral').value)||0;
+  var outros=parseFloat(document.getElementById('le-outros').value)||0;
+  document.getElementById('le-tot-ins').textContent=rr(totIns);
+  document.getElementById('le-tot-moral').textContent=rr(moral);
+  document.getElementById('le-tot-out').textContent=rr(outros);
+  document.getElementById('le-tot-geral').textContent=rr(totIns+moral+outros);
+}
+
+function leSalvar(){
+  var proc=document.getElementById('le-proc').value||'Laudo Ergonômico';
+  var totTxt=document.getElementById('le-tot-geral').textContent;
+  var s=JSON.parse(localStorage.getItem('lawgico_laud_erg')||'[]');
+  s.unshift({id:'le'+Date.now(),titulo:proc,data:new Date().toLocaleDateString('pt-BR'),totTxt:totTxt});
+  localStorage.setItem('lawgico_laud_erg',JSON.stringify(s));
+  alert('✅ Laudo ergonômico salvo!'); leRenderSalvos();
+}
+
+function leRenderSalvos(){
+  var s=JSON.parse(localStorage.getItem('lawgico_laud_erg')||'[]');
+  var el=document.getElementById('le-salvos-body');
+  if(!s.length){el.innerHTML='<div class="empty-s"><div class="ei">📂</div>Nenhum laudo salvo.</div>';return;}
+  el.innerHTML='<div class="saved-list">'+s.map(function(c){
+    return '<div class="si"><div style="flex:1"><div class="si-title">'+c.titulo+'</div><div class="si-meta">'+c.data+'</div></div><div class="si-val">'+c.totTxt+'</div><button class="si-del no-print" onclick="event.stopPropagation();leDel(\''+c.id+'\')" title="Excluir">🗑️</button></div>';
+  }).join('')+'</div>';
+}
+
+function leDel(cid){if(!confirm('Excluir?'))return; var s=JSON.parse(localStorage.getItem('lawgico_laud_erg')||'[]').filter(function(c){return c.id!==cid;}); localStorage.setItem('lawgico_laud_erg',JSON.stringify(s)); leRenderSalvos();}
+function leToggleSalvos(){var p=document.getElementById('le-salvos-panel');p.style.display=(p.style.display==='none')?'block':'none';if(p.style.display==='block') leRenderSalvos();}
+function leNovo(){if(!confirm('Novo laudo ergonômico?'))return;['le-proc','le-recl','le-reclada','le-perito','le-posto','le-cid','le-diag','le-obs','le-moral','le-outros'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});for(var i=1;i<=10;i++){var cb=document.getElementById('le-f'+i);if(cb)cb.checked=false;}document.getElementById('le-ins-sim').value='nao';leInsChange();}
 
 // ================================================================
 // INICIALIZAÇÃO
