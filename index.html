@@ -213,7 +213,7 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
   </div>
   <div class="module-tabs no-print">
     <button class="tab-btn active"    onclick="showMod('inicial',this)">📋 Cálculo Inicial</button>
-    <button class="tab-btn disabled"  onclick="showComing('discriminacao',this)">🤝 Discriminação de Verbas</button>
+    <button class="tab-btn"  onclick="showMod('discriminacao',this)">🤝 Discriminação de Verbas</button>
     <button class="tab-btn"  onclick="showMod('fgts',this)">🏦 FGTS</button>
     <button class="tab-btn"  onclick="showMod('liquidacao',this)">⚖️ Liquidação de Sentença</button>
     <button class="tab-btn"  onclick="showMod('laudos',this)">📄 Laudos Periciais</button>
@@ -1232,6 +1232,320 @@ table.vtbl{width:100%;border-collapse:collapse;font-size:12px;min-width:1140px}
   </div><!-- /mod-fgts -->
 
   <!-- ╔══════════════════════════════════════════╗ -->
+  <!-- ║    MÓDULO: DISCRIMINAÇÃO DE VERBAS       ║ -->
+  <!-- ╚══════════════════════════════════════════╝ -->
+  <div id="mod-discriminacao" style="display:none">
+
+    <div class="alert alert-info no-print">
+      ℹ️ <strong>Discriminação de Verbas de Acordo</strong> — Lance as verbas do acordo com sua natureza (salarial/indenizatória). O sistema apura os descontos do trabalhador (INSS, IRRF, honorários) e o custo total para a empresa.
+    </div>
+
+    <!-- IDENTIFICAÇÃO -->
+    <div class="card">
+      <div class="card-header">📁 Identificação do Processo <span class="card-badge">ACORDO</span></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="fg" style="grid-column:span 2"><label>Número do Processo</label><input type="text" id="disc-proc" class="fc" placeholder="0000000-00.0000.5.00.0000"></div>
+          <div class="fg" style="grid-column:span 2"><label>Reclamante</label><input type="text" id="disc-recl" class="fc" placeholder="Nome completo do reclamante"></div>
+          <div class="fg" style="grid-column:span 2"><label>Reclamada</label><input type="text" id="disc-reclada" class="fc" placeholder="Nome da empresa reclamada"></div>
+          <div class="fg"><label>Juízo / Vara</label><input type="text" id="disc-juizo" class="fc" placeholder="Ex.: 3ª Vara do Trabalho de SP"></div>
+          <div class="fg"><label>Data do Acordo</label><input type="date" id="disc-data-acordo" class="fc"></div>
+          <div class="fg"><label>Nº de Meses do Vínculo</label><input type="number" id="disc-nMeses-vinculo" class="fc" placeholder="Para INSS e IRRF" oninput="discSyncMeses()"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VERBAS DO ACORDO -->
+    <div class="card">
+      <div class="card-header">🗒️ Composição do Acordo — Verbas <span class="card-badge no-print" id="disc-badge-v">0 verbas</span></div>
+      <div class="card-body" style="padding:14px 16px">
+        <div class="alert alert-warn no-print">
+          ⚠️ Informe os valores já acordados (brutos). Classifique cada verba como <em>Salarial</em> (sujeita a INSS, IRRF e FGTS) ou <em>Indenizatória</em> (isenta). Uma discriminação bem fundamentada reduz a carga tributária e o custo do acordo.
+        </div>
+        <div class="tbl-wrap">
+          <table class="vtbl" style="min-width:600px">
+            <thead>
+              <tr>
+                <th class="cn">#</th>
+                <th class="cv">Verba / Pedido</th>
+                <th style="width:150px;text-align:left">Natureza</th>
+                <th style="width:180px" class="rc">Valor Acordado (R$)</th>
+                <th class="cdel no-print"></th>
+              </tr>
+            </thead>
+            <tbody id="disc-vtbody"></tbody>
+          </table>
+        </div>
+        <button class="add-row-btn no-print" onclick="discAddVerba()">➕ Adicionar Verba</button>
+      </div>
+    </div>
+
+    <!-- SUBTOTAIS -->
+    <div class="liq-subtotais">
+      <div class="liq-sub">
+        <div class="liq-sub-label">🔵 Total Salarial</div>
+        <div class="liq-sub-val sal" id="disc-tot-sal">R$ 0,00</div>
+        <div style="font-size:11px;color:#3b82f6;font-weight:700;margin-top:4px" id="disc-pct-sal">—</div>
+      </div>
+      <div class="liq-sub">
+        <div class="liq-sub-label">🟣 Total Indenizatório</div>
+        <div class="liq-sub-val ind" id="disc-tot-ind">R$ 0,00</div>
+        <div style="font-size:11px;color:#7c3aed;font-weight:700;margin-top:4px" id="disc-pct-ind">—</div>
+      </div>
+      <div class="liq-sub">
+        <div class="liq-sub-label">🟢 Total do Acordo</div>
+        <div class="liq-sub-val bruto" id="disc-tot-bruto">R$ 0,00</div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:4px">Valor bruto total</div>
+      </div>
+    </div>
+
+    <!-- INSS EMPREGADO -->
+    <div class="card">
+      <div class="card-header">🏛️ INSS — Empregado (Tabela Progressiva 2025)</div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+          <label class="chk-lbl">
+            <input type="checkbox" id="disc-inss-ativo" onchange="discRecalc()" checked>
+            Aplicar INSS sobre verbas salariais
+          </label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">Nº de competências</label>
+            <input type="number" id="disc-inss-meses" class="fc" style="width:90px" min="1" placeholder="Ex.: 24" oninput="discRecalc()">
+          </div>
+        </div>
+        <div class="toggle-panel">
+          <div class="inss-breakdown">
+            <table>
+              <thead>
+                <tr>
+                  <th>Faixa Salarial (mensal)</th><th class="rc">Alíquota</th>
+                  <th class="rc">Base Trib. Mensal</th><th class="rc">INSS na Faixa (mensal)</th>
+                </tr>
+              </thead>
+              <tbody id="disc-inss-rows">
+                <tr><td colspan="4" style="text-align:center;padding:14px;color:#94a3b8">Preencha o total salarial e o nº de competências.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:20px;margin-top:12px;padding-top:12px;border-top:2px solid #e2e8f0">
+            <div style="text-align:right">
+              <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">INSS Mensal</div>
+              <div style="font-size:16px;font-weight:900;color:#dc2626" id="disc-inss-mensal-val">—</div>
+            </div>
+            <div style="width:1px;height:36px;background:#e2e8f0"></div>
+            <div style="text-align:right">
+              <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">INSS Total</div>
+              <div style="font-size:22px;font-weight:900;color:#dc2626" id="disc-inss-total-val">—</div>
+            </div>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:#94a3b8">Teto 2025: R$ 951,62/mês · Faixas: 7,5% / 9% / 12% / 14%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IRRF ART. 12-A -->
+    <div class="card">
+      <div class="card-header">📊 IRRF — Art. 12-A da Lei 7.713/88 (Rendimentos Acumulados)</div>
+      <div class="card-body">
+        <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:12px">
+          <label class="chk-lbl">
+            <input type="checkbox" id="disc-irrf-ativo" onchange="discToggleIRRF()" checked>
+            Aplicar IRRF sobre rendimentos acumulados (art. 12-A)
+          </label>
+        </div>
+        <div id="disc-irrf-body">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Nº de Meses do Período</label>
+              <input type="number" id="disc-irrf-meses" class="fc" min="1" placeholder="Ex.: 24" oninput="discRecalc()">
+            </div>
+            <div class="fg">
+              <label>Deduções Mensais (R$)</label>
+              <input type="number" step="0.01" id="disc-irrf-ded" class="fc" placeholder="R$ 189,59/dependente, pensão..." oninput="discRecalc()">
+            </div>
+          </div>
+          <div style="margin-top:14px;background:#f8fafc;border-radius:8px;padding:14px 16px;border:1px solid #e2e8f0">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">
+              <div>
+                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Base Tributável</div>
+                <div style="font-size:14px;font-weight:800;color:#334155" id="disc-irrf-base">—</div>
+                <div style="font-size:10px;color:#94a3b8">Salarial − INSS − Deduções</div>
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Renda Mensal Ficta</div>
+                <div style="font-size:14px;font-weight:800;color:#334155" id="disc-irrf-renda">—</div>
+                <div style="font-size:10px;color:#94a3b8">Base ÷ nº de meses</div>
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Alíquota Efetiva</div>
+                <div style="font-size:15px;font-weight:800;color:#334155" id="disc-irrf-aliq">—</div>
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">IRRF Total</div>
+                <div style="font-size:22px;font-weight:900;color:#dc2626" id="disc-irrf-total">—</div>
+                <div style="font-size:10px;color:#94a3b8" id="disc-irrf-info"></div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:#94a3b8">Tabela 2025: Isento até R$ 2.428,80 · 7,5% · 15% · 22,5% · 27,5% · Dedução R$ 189,59/dependente</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HONORÁRIOS TRABALHADOR -->
+    <div class="card">
+      <div class="card-header">⚖️ Honorários do Trabalhador</div>
+      <div class="card-body">
+        <label class="chk-lbl">
+          <input type="checkbox" id="disc-hon-trab-ativo" onchange="discToggleHonTrab()">
+          Calcular honorários advocatícios do trabalhador
+        </label>
+        <div id="disc-hon-trab-body" class="toggle-panel" style="display:none">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Percentual (%)</label>
+              <input type="number" step="0.5" id="disc-hon-trab-pct" class="fc" value="15" min="0" max="30" oninput="discRecalc()">
+            </div>
+            <div class="fg">
+              <label>Base de Cálculo</label>
+              <select id="disc-hon-trab-base" class="fc" onchange="discRecalc()">
+                <option value="bruto">Total do Acordo</option>
+                <option value="sal">Total Salarial</option>
+                <option value="ind">Total Indenizatório</option>
+                <option value="liq">Valor Líquido (após INSS e IRRF)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Honorários</label>
+              <div class="result-box" id="disc-hon-trab-val" style="font-size:16px;font-weight:900">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENCARGOS EMPREGADOR -->
+    <div class="card">
+      <div class="card-header">🏢 Encargos do Empregador</div>
+      <div class="card-body">
+        <div class="enc-grid" style="margin-top:0;margin-bottom:14px">
+          <div class="enc-item">
+            <div class="enc-item-label">INSS Patronal</div>
+            <div class="enc-item-val" id="disc-emp-inss-pat">—</div>
+            <div class="enc-item-pct">20% s/ salarial</div>
+          </div>
+          <div class="enc-item">
+            <div class="enc-item-label">FGTS</div>
+            <div class="enc-item-val" id="disc-emp-fgts">—</div>
+            <div class="enc-item-pct">8% s/ salarial</div>
+          </div>
+        </div>
+        <!-- Multa FGTS toggle -->
+        <label class="chk-lbl">
+          <input type="checkbox" id="disc-multa-ativo" onchange="discToggleMulta()">
+          Incluir Multa de 40% (dispensa sem justa causa)
+        </label>
+        <div id="disc-multa-body" class="toggle-panel" style="display:none">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Saldo FGTS — conta vinculada (R$)</label>
+              <input type="number" step="0.01" id="disc-saldo-fgts" class="fc" placeholder="Extrato Caixa" oninput="discRecalc()">
+              <span style="font-size:10px;color:#94a3b8;margin-top:3px;display:block">Depósitos já realizados pelo empregador</span>
+            </div>
+            <div class="fg">
+              <label>Base da Multa (saldo + FGTS s/ acordo)</label>
+              <div class="result-box" id="disc-base-multa">—</div>
+            </div>
+            <div class="fg">
+              <label>Multa de 40%</label>
+              <div class="result-box" id="disc-multa-val" style="font-size:16px;font-weight:900;color:#dc2626;background:#fee2e2;border-color:#fca5a5">—</div>
+            </div>
+          </div>
+        </div>
+        <!-- Honorários Empregador toggle -->
+        <label class="chk-lbl" style="margin-top:12px">
+          <input type="checkbox" id="disc-hon-emp-ativo" onchange="discToggleHonEmp()">
+          Honorários do advogado da empresa
+        </label>
+        <div id="disc-hon-emp-body" class="toggle-panel" style="display:none">
+          <div class="form-grid">
+            <div class="fg">
+              <label>Percentual (%) s/ valor do acordo</label>
+              <input type="number" step="0.5" id="disc-hon-emp-pct" class="fc" value="15" min="0" oninput="discRecalc()">
+            </div>
+            <div class="fg">
+              <label>Honorários Empregador</label>
+              <div class="result-box" id="disc-hon-emp-val" style="font-size:16px;font-weight:900">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESUMO COMPARATIVO -->
+    <div class="card">
+      <div class="card-header">⭐ Resumo Comparativo — Trabalhador × Empregador</div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+          <!-- TRABALHADOR -->
+          <div style="background:linear-gradient(135deg,#0A2463 0%,#1a3a6b 100%);border-radius:12px;padding:22px;color:white">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;opacity:.6;text-transform:uppercase;margin-bottom:16px">Recebimento — Trabalhador</div>
+            <table style="width:100%;font-size:13px;border-collapse:collapse">
+              <tr><td style="opacity:.7;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)">Total do Acordo</td><td style="text-align:right;font-weight:700;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)" id="disc-res-bruto">R$ 0,00</td></tr>
+              <tr><td style="opacity:.7;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)">(-) INSS Empregado</td><td style="text-align:right;color:#fca5a5;font-weight:700;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)" id="disc-res-inss">R$ 0,00</td></tr>
+              <tr><td style="opacity:.7;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)">(-) IRRF Art. 12-A</td><td style="text-align:right;color:#fca5a5;font-weight:700;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)" id="disc-res-irrf">R$ 0,00</td></tr>
+              <tr><td style="opacity:.7;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.15)">(-) Honorários</td><td style="text-align:right;color:#fca5a5;font-weight:700;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.15)" id="disc-res-hon-trab">R$ 0,00</td></tr>
+              <tr><td style="padding:12px 0 0;font-weight:800;color:#6ee7b7;font-size:14px">⭐ Valor Líquido</td><td style="text-align:right;font-weight:900;font-size:20px;color:#6ee7b7;padding:12px 0 0" id="disc-res-liq">R$ 0,00</td></tr>
+            </table>
+          </div>
+
+          <!-- EMPREGADOR -->
+          <div style="background:#fff7ed;border:2px solid #fed7aa;border-radius:12px;padding:22px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;color:#c2410c;text-transform:uppercase;margin-bottom:16px">Custo Total — Empregador</div>
+            <table style="width:100%;font-size:13px;border-collapse:collapse">
+              <tr><td style="color:#6b7280;padding:6px 0;border-bottom:1px solid #fed7aa">Valor do Acordo</td><td style="text-align:right;font-weight:700;color:#374151;padding:6px 0;border-bottom:1px solid #fed7aa" id="disc-emp-bruto">R$ 0,00</td></tr>
+              <tr><td style="color:#6b7280;padding:6px 0;border-bottom:1px solid #fed7aa">(+) INSS Patronal 20%</td><td style="text-align:right;color:#ea580c;font-weight:700;padding:6px 0;border-bottom:1px solid #fed7aa" id="disc-emp-inss-res">R$ 0,00</td></tr>
+              <tr><td style="color:#6b7280;padding:6px 0;border-bottom:1px solid #fed7aa">(+) FGTS 8%</td><td style="text-align:right;color:#ea580c;font-weight:700;padding:6px 0;border-bottom:1px solid #fed7aa" id="disc-emp-fgts-res">R$ 0,00</td></tr>
+              <tr><td style="color:#6b7280;padding:6px 0;border-bottom:1px solid #fed7aa">(+) Multa FGTS 40%</td><td style="text-align:right;color:#ea580c;font-weight:700;padding:6px 0;border-bottom:1px solid #fed7aa" id="disc-emp-multa">R$ 0,00</td></tr>
+              <tr><td style="color:#6b7280;padding:6px 0;border-bottom:2px solid #fed7aa">(+) Honorários</td><td style="text-align:right;color:#ea580c;font-weight:700;padding:6px 0;border-bottom:2px solid #fed7aa" id="disc-emp-hon">R$ 0,00</td></tr>
+              <tr><td style="padding:12px 0 0;font-weight:800;color:#c2410c;font-size:14px">💰 Custo Total</td><td style="text-align:right;font-weight:900;font-size:20px;color:#c2410c;padding:12px 0 0" id="disc-emp-total">R$ 0,00</td></tr>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- OBSERVAÇÕES -->
+    <div class="card">
+      <div class="card-header">📝 Observações</div>
+      <div class="card-body">
+        <textarea class="obs-area" id="disc-obs" placeholder="Critérios de discriminação adotados, fundamentos jurídicos, ressalvas..."></textarea>
+      </div>
+    </div>
+
+    <!-- AÇÕES -->
+    <div class="actions-bar no-print">
+      <button class="btn btn-green"   onclick="discSalvar()">💾 Salvar Discriminação</button>
+      <button class="btn btn-cyan"    onclick="window.print()">🖨️ Imprimir / PDF</button>
+      <button class="btn btn-navy"    onclick="discNovo()">📄 Nova Discriminação</button>
+      <button class="btn btn-outline" onclick="discToggleSalvos()">📂 Salvos</button>
+    </div>
+
+    <!-- SALVOS -->
+    <div id="disc-salvos-panel" style="display:none">
+      <div class="card">
+        <div class="card-header">📂 Discriminações Salvas</div>
+        <div class="card-body" id="disc-salvos-body">
+          <div class="empty-s"><div class="ei">📂</div>Nenhuma discriminação salva.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /mod-discriminacao -->
+
+  <!-- ╔══════════════════════════════════════════╗ -->
   <!-- ║           EM DESENVOLVIMENTO            ║ -->
   <!-- ╚══════════════════════════════════════════╝ -->
   <div id="mod-coming" style="display:none">
@@ -1694,19 +2008,16 @@ function novoCalc(){
 // ================================================================
 
 function showMod(mod,btn){
-  ['inicial','laudos','liquidacao','fgts'].forEach(function(m){
+  ['inicial','laudos','liquidacao','fgts','discriminacao'].forEach(function(m){
     document.getElementById('mod-'+m).style.display=(mod===m)?'':'none';
   });
-  var ativos=['inicial','laudos','liquidacao','fgts'];
+  var ativos=['inicial','laudos','liquidacao','fgts','discriminacao'];
   document.getElementById('mod-coming').style.display=(ativos.indexOf(mod)===-1)?'':'none';
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   if(btn) btn.classList.add('active');
 }
 
-var COMING_NAMES={
-  discriminacao:'Discriminação de Verbas de Acordo',
-  fgts:'FGTS — Depósitos e Multa de 40%'
-};
+var COMING_NAMES={};
 
 function showComing(nome,btn){
   document.getElementById('coming-title').textContent=COMING_NAMES[nome]||'Em desenvolvimento';
@@ -2552,6 +2863,310 @@ function fgtsNovo(){
 }
 
 // ================================================================
+// DISCRIMINAÇÃO DE VERBAS DE ACORDO
+// ================================================================
+
+var DISC_VERBAS = [];
+var DISC_VCONT  = 0;
+
+function discAddVerba(src){
+  DISC_VCONT++;
+  var v=src?JSON.parse(JSON.stringify(src)):{};
+  v.id='dv'+DISC_VCONT;
+  if(!v.nome)     v.nome='';
+  if(!v.natureza) v.natureza='sal';
+  if(!v.valor)    v.valor='';
+  DISC_VERBAS.push(v);
+  discRenderVerbas();
+  discRecalc();
+}
+
+function discRemVerba(id){
+  DISC_VERBAS=DISC_VERBAS.filter(function(v){return v.id!==id;});
+  discRenderVerbas();
+  discRecalc();
+}
+
+function discSetField(id,field,val){
+  var v=DISC_VERBAS.find(function(x){return x.id===id;});
+  if(!v) return;
+  v[field]=val;
+  discRecalc();
+}
+
+function discSetFieldAndRender(id,field,val){
+  discSetField(id,field,val);
+  discRenderVerbas();
+  discRecalc();
+}
+
+// Sincroniza o nº de meses do vínculo → INSS e IRRF
+function discSyncMeses(){
+  var n=document.getElementById('disc-nMeses-vinculo').value;
+  document.getElementById('disc-inss-meses').value=n;
+  document.getElementById('disc-irrf-meses').value=n;
+  discRecalc();
+}
+
+function discRenderVerbas(){
+  var tb=document.getElementById('disc-vtbody');
+  tb.innerHTML='';
+  var sti='width:100%;border:1.5px solid #e2e8f0;border-radius:6px;padding:5px 7px;font-size:12px;color:#1e293b';
+  DISC_VERBAS.forEach(function(v,i){
+    var nopts=NOMES_VERBAS.map(function(n){
+      return '<option value="'+n+'"'+(v.nome===n?' selected':'')+'>'+n+'</option>';
+    }).join('');
+    var customInput=(v.nome==='✏️ Outra (digitar abaixo)')
+      ?'<input type="text" placeholder="Nome da verba..." value="'+(v.nomeCustom||'')+
+        '" oninput="var vv=DISC_VERBAS.find(function(x){return x.id===\''+v.id+'\'});if(vv)vv.nomeCustom=this.value"'+
+        ' style="margin-top:4px;width:100%;border:1.5px solid #e2e8f0;border-radius:6px;padding:4px 7px;font-size:11.5px">'
+      :'';
+    var tr=document.createElement('tr');
+    tr.setAttribute('data-id',v.id);
+    tr.innerHTML=
+      '<td class="cn">'+(i+1)+'</td>'+
+      '<td class="cv">'+
+        '<select onchange="discSetFieldAndRender(\''+v.id+'\',\'nome\',this.value)">'+nopts+'</select>'+
+        customInput+
+      '</td>'+
+      '<td style="min-width:140px">'+
+        '<select onchange="discSetField(\''+v.id+'\',\'natureza\',this.value)" style="'+sti+'">'+
+          '<option value="sal"'+(v.natureza==='sal'?' selected':'')+'>🔵 Salarial</option>'+
+          '<option value="ind"'+(v.natureza==='ind'?' selected':'')+'>🟣 Indenizatória</option>'+
+        '</select>'+
+      '</td>'+
+      '<td style="min-width:160px">'+
+        '<input type="number" step="0.01" min="0" placeholder="0,00" value="'+(v.valor||'')+
+        '" oninput="discSetField(\''+v.id+'\',\'valor\',this.value)"'+
+        ' style="'+sti+';text-align:right;font-weight:700">'+
+      '</td>'+
+      '<td class="cdel no-print">'+
+        '<button class="del-btn" onclick="discRemVerba(\''+v.id+'\')" title="Remover">🗑️</button>'+
+      '</td>';
+    tb.appendChild(tr);
+  });
+  document.getElementById('disc-badge-v').textContent=
+    DISC_VERBAS.length+(DISC_VERBAS.length===1?' verba':' verbas');
+}
+
+// ── TOGGLES ───────────────────────────────────────────────────────
+
+function discToggleIRRF(){
+  document.getElementById('disc-irrf-body').style.display=
+    document.getElementById('disc-irrf-ativo').checked?'':'none';
+  discRecalc();
+}
+function discToggleHonTrab(){
+  document.getElementById('disc-hon-trab-body').style.display=
+    document.getElementById('disc-hon-trab-ativo').checked?'':'none';
+  discRecalc();
+}
+function discToggleMulta(){
+  document.getElementById('disc-multa-body').style.display=
+    document.getElementById('disc-multa-ativo').checked?'':'none';
+  discRecalc();
+}
+function discToggleHonEmp(){
+  document.getElementById('disc-hon-emp-body').style.display=
+    document.getElementById('disc-hon-emp-ativo').checked?'':'none';
+  discRecalc();
+}
+
+// ── RECALC PRINCIPAL ──────────────────────────────────────────────
+
+function discRecalc(){
+  // 1. Totais
+  var totSal=0,totInd=0;
+  DISC_VERBAS.forEach(function(v){
+    var val=parseFloat(String(v.valor||'').replace(',','.'))||0;
+    if(v.natureza==='ind') totInd+=val; else totSal+=val;
+  });
+  var totBruto=totSal+totInd;
+
+  document.getElementById('disc-tot-sal').textContent  =rr(totSal);
+  document.getElementById('disc-tot-ind').textContent  =rr(totInd);
+  document.getElementById('disc-tot-bruto').textContent=rr(totBruto);
+  document.getElementById('disc-pct-sal').textContent  =totBruto>0?(totSal/totBruto*100).toFixed(1)+'% do total':'—';
+  document.getElementById('disc-pct-ind').textContent  =totBruto>0?(totInd/totBruto*100).toFixed(1)+'% do total':'—';
+  document.getElementById('disc-res-bruto').textContent=rr(totBruto);
+  document.getElementById('disc-emp-bruto').textContent=rr(totBruto);
+
+  // 2. INSS Empregado
+  var inssTotal=0;
+  var inssAtivo=document.getElementById('disc-inss-ativo').checked;
+  if(inssAtivo&&totSal>0){
+    var nM=parseInt(document.getElementById('disc-inss-meses').value)||0;
+    if(nM>0){
+      var bM=totSal/nM;
+      var ic=calcINSSProgressivo(bM);
+      inssTotal=ic.total*nM;
+      document.getElementById('disc-inss-mensal-val').textContent=rr(ic.total);
+      document.getElementById('disc-inss-total-val').textContent =rr(inssTotal);
+      var rows='';
+      ic.breakdown.forEach(function(b){
+        rows+='<tr><td>Até '+rr(b.ate)+'</td><td class="rc">'+(b.aliq*100).toFixed(1)+'%</td>'+
+          '<td class="rc">'+rr(b.trib)+'</td><td class="rc">'+rr(b.val)+'</td></tr>';
+      });
+      if(ic.total>=INSS_TETO) rows+='<tr class="row-teto"><td colspan="3" style="font-size:11px;color:#d97706">⚠️ Teto atingido — R$ 951,62/mês</td><td class="rc">'+rr(INSS_TETO)+'</td></tr>';
+      document.getElementById('disc-inss-rows').innerHTML=rows||'<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:10px">—</td></tr>';
+    } else {
+      document.getElementById('disc-inss-mensal-val').textContent='—';
+      document.getElementById('disc-inss-total-val').textContent ='Informe o nº de meses';
+      document.getElementById('disc-inss-rows').innerHTML='<tr><td colspan="4" style="text-align:center;padding:14px;color:#94a3b8">Informe o nº de competências.</td></tr>';
+    }
+  } else {
+    document.getElementById('disc-inss-mensal-val').textContent='—';
+    document.getElementById('disc-inss-total-val').textContent ='—';
+    document.getElementById('disc-inss-rows').innerHTML='<tr><td colspan="4" style="text-align:center;padding:14px;color:#94a3b8">'+(inssAtivo?'Preencha o total salarial e nº de competências.':'INSS desativado.')+'</td></tr>';
+  }
+  document.getElementById('disc-res-inss').textContent=rr(inssAtivo?inssTotal:0);
+
+  // 3. IRRF Art. 12-A
+  var irrfTotal=0;
+  var irrfAtivo=document.getElementById('disc-irrf-ativo').checked;
+  if(irrfAtivo&&totSal>0){
+    var nMI=parseInt(document.getElementById('disc-irrf-meses').value)||0;
+    var dedM=parseFloat(document.getElementById('disc-irrf-ded').value)||0;
+    if(nMI>0){
+      var baseTrib=Math.max(0,totSal-inssTotal-(dedM*nMI));
+      var rf=baseTrib/nMI;
+      var ir=calcIRRFMensal(rf);
+      irrfTotal=ir.val*nMI;
+      document.getElementById('disc-irrf-base').textContent =rr(baseTrib);
+      document.getElementById('disc-irrf-renda').textContent=rr(rf);
+      document.getElementById('disc-irrf-aliq').textContent =ir.txt;
+      document.getElementById('disc-irrf-total').textContent=rr(irrfTotal);
+      document.getElementById('disc-irrf-info').textContent =rr(ir.val)+'/mês × '+nMI+' meses';
+    } else {
+      ['disc-irrf-base','disc-irrf-renda','disc-irrf-aliq'].forEach(function(id){document.getElementById(id).textContent='—';});
+      document.getElementById('disc-irrf-total').textContent='Informe o nº de meses';
+      document.getElementById('disc-irrf-info').textContent='';
+    }
+  } else {
+    ['disc-irrf-base','disc-irrf-renda','disc-irrf-aliq','disc-irrf-total'].forEach(function(id){document.getElementById(id).textContent='—';});
+    document.getElementById('disc-irrf-info').textContent='';
+  }
+  document.getElementById('disc-res-irrf').textContent=rr(irrfAtivo?irrfTotal:0);
+
+  // 4. Honorários Trabalhador
+  var honTrab=0,honTrabAtivo=document.getElementById('disc-hon-trab-ativo').checked;
+  if(honTrabAtivo){
+    var pctHT=(parseFloat(document.getElementById('disc-hon-trab-pct').value)||0)/100;
+    var subtT=totBruto-(inssAtivo?inssTotal:0)-(irrfAtivo?irrfTotal:0);
+    var bHT=document.getElementById('disc-hon-trab-base').value;
+    honTrab=(bHT==='bruto'?totBruto:bHT==='sal'?totSal:bHT==='ind'?totInd:subtT)*pctHT;
+    document.getElementById('disc-hon-trab-val').textContent=rr(honTrab);
+  }
+  document.getElementById('disc-res-hon-trab').textContent=rr(honTrabAtivo?honTrab:0);
+
+  // 5. Valor Líquido Trabalhador
+  var valLiq=totBruto-(inssAtivo?inssTotal:0)-(irrfAtivo?irrfTotal:0)-(honTrabAtivo?honTrab:0);
+  document.getElementById('disc-res-liq').textContent=rr(valLiq);
+
+  // 6. Encargos Empregador
+  var inssPat=totSal*0.20;
+  var fgtsVal=totSal*0.08;
+  document.getElementById('disc-emp-inss-pat').textContent=rr(inssPat);
+  document.getElementById('disc-emp-fgts').textContent    =rr(fgtsVal);
+  document.getElementById('disc-emp-inss-res').textContent=rr(inssPat);
+  document.getElementById('disc-emp-fgts-res').textContent=rr(fgtsVal);
+
+  var multaTotal=0,multaAtiva=document.getElementById('disc-multa-ativo').checked;
+  if(multaAtiva){
+    var saldo=parseFloat(document.getElementById('disc-saldo-fgts').value)||0;
+    var baseM=saldo+fgtsVal;
+    multaTotal=baseM*0.40;
+    document.getElementById('disc-base-multa').textContent=rr(baseM);
+    document.getElementById('disc-multa-val').textContent =rr(multaTotal);
+  }
+  document.getElementById('disc-emp-multa').textContent=rr(multaAtiva?multaTotal:0);
+
+  var honEmp=0,honEmpAtivo=document.getElementById('disc-hon-emp-ativo').checked;
+  if(honEmpAtivo){
+    honEmp=totBruto*((parseFloat(document.getElementById('disc-hon-emp-pct').value)||0)/100);
+    document.getElementById('disc-hon-emp-val').textContent=rr(honEmp);
+  }
+  document.getElementById('disc-emp-hon').textContent=rr(honEmpAtivo?honEmp:0);
+
+  var custoTotal=totBruto+inssPat+fgtsVal+(multaAtiva?multaTotal:0)+(honEmpAtivo?honEmp:0);
+  document.getElementById('disc-emp-total').textContent=rr(custoTotal);
+}
+
+// ── SAVE / LOAD ───────────────────────────────────────────────────
+
+function discSalvar(){
+  if(!DISC_VERBAS.length){alert('Adicione ao menos uma verba antes de salvar.');return;}
+  var proc=document.getElementById('disc-proc').value||
+           document.getElementById('disc-recl').value||'Acordo sem título';
+  var totTxt=document.getElementById('disc-res-liq').textContent;
+  var s=JSON.parse(localStorage.getItem('lawgico_disc')||'[]');
+  s.unshift({
+    id:'dsc'+Date.now(),titulo:proc,
+    data:new Date().toLocaleDateString('pt-BR'),
+    totTxt:totTxt,
+    verbas:JSON.parse(JSON.stringify(DISC_VERBAS)),
+    obs:document.getElementById('disc-obs').value
+  });
+  localStorage.setItem('lawgico_disc',JSON.stringify(s));
+  alert('✅ Discriminação salva com sucesso!');
+  discRenderSalvos();
+}
+
+function discRenderSalvos(){
+  var s=JSON.parse(localStorage.getItem('lawgico_disc')||'[]');
+  var el=document.getElementById('disc-salvos-body');
+  if(!s.length){el.innerHTML='<div class="empty-s"><div class="ei">📂</div>Nenhuma discriminação salva.</div>';return;}
+  el.innerHTML='<div class="saved-list">'+s.map(function(c){
+    return '<div class="si" onclick="discCarregar(\''+c.id+'\')">'+
+      '<div style="flex:1"><div class="si-title">'+(c.titulo||'(sem título)')+'</div>'+
+      '<div class="si-meta">Salvo em '+c.data+'&nbsp;·&nbsp;'+(c.verbas||[]).length+' verbas</div></div>'+
+      '<div class="si-val">'+c.totTxt+'</div>'+
+      '<button class="si-del no-print" onclick="event.stopPropagation();discDel(\''+c.id+'\')" title="Excluir">🗑️</button>'+
+    '</div>';
+  }).join('')+'</div>';
+}
+
+function discCarregar(cid){
+  var s=JSON.parse(localStorage.getItem('lawgico_disc')||'[]');
+  var obj=s.find(function(c){return c.id===cid;});
+  if(!obj) return;
+  DISC_VERBAS=[];DISC_VCONT=0;
+  (obj.verbas||[]).forEach(function(v){discAddVerba(v);});
+  document.getElementById('disc-obs').value=obj.obs||'';
+  discRenderVerbas();discRecalc();
+  document.getElementById('disc-salvos-panel').style.display='none';
+  window.scrollTo(0,0);
+}
+
+function discDel(cid){
+  if(!confirm('Excluir?'))return;
+  var s=JSON.parse(localStorage.getItem('lawgico_disc')||'[]').filter(function(c){return c.id!==cid;});
+  localStorage.setItem('lawgico_disc',JSON.stringify(s));
+  discRenderSalvos();
+}
+
+function discToggleSalvos(){
+  var p=document.getElementById('disc-salvos-panel');
+  p.style.display=(p.style.display==='none')?'block':'none';
+  if(p.style.display==='block') discRenderSalvos();
+}
+
+function discNovo(){
+  if(!confirm('Iniciar nova discriminação? Os dados não salvos serão perdidos.'))return;
+  DISC_VERBAS=[];DISC_VCONT=0;
+  ['disc-proc','disc-recl','disc-reclada','disc-juizo','disc-data-acordo',
+   'disc-nMeses-vinculo','disc-inss-meses','disc-irrf-meses','disc-irrf-ded',
+   'disc-saldo-fgts','disc-obs'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.value='';
+  });
+  ['disc-hon-trab-ativo','disc-multa-ativo','disc-hon-emp-ativo'].forEach(function(id){
+    document.getElementById(id).checked=false;
+  });
+  discToggleHonTrab();discToggleMulta();discToggleHonEmp();
+  discRenderVerbas();discRecalc();discAddVerba();
+}
+
+// ================================================================
 // INICIALIZAÇÃO
 // ================================================================
 
@@ -2566,6 +3181,7 @@ document.getElementById('liq-datab').value=today();
 addVerba();
 liqAddVerba();
 fgtsAddPeriodo();
+discAddVerba();
 </script>
 </body>
 </html>
